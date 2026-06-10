@@ -25,6 +25,12 @@ export const QUEUE_TIMEOUT_S = 60;
 /** Splat percent added per tomato hit. ~10 hits to be covered. */
 export const SPLAT_PER_HIT = 10;
 
+/**
+ * Min ms between throws per player. Enforced server side (never trust the
+ * client); the client also respects it locally for feel.
+ */
+export const THROW_COOLDOWN_MS = 280;
+
 export interface RateLimit {
   /** Sliding window length in seconds. */
   windowS: number;

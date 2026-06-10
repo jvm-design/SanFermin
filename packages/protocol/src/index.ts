@@ -1,8 +1,6 @@
 /**
- * Typed client<->server message schemas.
- *
- * Phase 0 has no networking; the wire protocol (ThrowEvent, StateSync,
- * RoundEnd, PlayerLeft) is defined here in Phase 1 per docs/BUILD-PLAN.md.
- * All client<->server messages must be typed through this package.
+ * Typed client<->server message schemas. All client<->server messages must
+ * go through the types in this package — no untyped payloads (CLAUDE.md).
  */
-export {};
+export * from "./messages";
+export * from "./state";

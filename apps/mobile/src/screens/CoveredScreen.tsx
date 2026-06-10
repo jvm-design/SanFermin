@@ -8,19 +8,31 @@ interface Props {
   onContinue: () => void;
 }
 
+const COPY = {
+  covered: {
+    emoji: "🫠",
+    title: "You're covered!",
+    subtitle: "Your view filled with tomato. Round over.",
+  },
+  coveredThem: {
+    emoji: "🎯",
+    title: "You covered them!",
+    subtitle: "Their screen is a wall of tomato. Round over.",
+  },
+  opponentLeft: {
+    emoji: "👋",
+    title: "They left",
+    subtitle: "The round ended early — no winner, no penalty.",
+  },
+} as const;
+
 export function CoveredScreen({ outcome, onContinue }: Props) {
-  const covered = outcome === "covered";
+  const copy = COPY[outcome];
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>{covered ? "🫠" : "🎯"}</Text>
-      <Text style={styles.title}>
-        {covered ? "You're covered!" : "You covered them!"}
-      </Text>
-      <Text style={styles.subtitle}>
-        {covered
-          ? "Your view filled with tomato. Round over."
-          : "Their screen is a wall of tomato. Round over."}
-      </Text>
+      <Text style={styles.emoji}>{copy.emoji}</Text>
+      <Text style={styles.title}>{copy.title}</Text>
+      <Text style={styles.subtitle}>{copy.subtitle}</Text>
       <Pressable style={styles.button} onPress={onContinue}>
         <Text style={styles.buttonText}>Continue</Text>
       </Pressable>

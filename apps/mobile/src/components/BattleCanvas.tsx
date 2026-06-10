@@ -2,8 +2,7 @@ import React from "react";
 import { StyleSheet } from "react-native";
 import { Canvas, Circle, Group, RoundedRect } from "@shopify/react-native-skia";
 import { COVER_THRESHOLD } from "@tomatina/shared";
-import { BattleState, UseBattleResult } from "../game/useBattle";
-import { Projectile, Splat, Vec2 } from "../game/types";
+import { BattleLayout, BattleViewState, Projectile, Splat, Vec2 } from "../game/types";
 import { colors } from "../theme";
 
 function projectilePosition(p: Projectile, nowMs: number): { pos: Vec2; t: number } {
@@ -48,7 +47,15 @@ function SplatShape({ splat }: { splat: Splat }) {
   );
 }
 
-function Opponent({ state, center, radius }: { state: BattleState; center: Vec2; radius: number }) {
+function Opponent({
+  splats,
+  center,
+  radius,
+}: {
+  splats: Splat[];
+  center: Vec2;
+  radius: number;
+}) {
   const eyeOffset = radius * 0.34;
   return (
     <Group>
@@ -64,24 +71,33 @@ function Opponent({ state, center, radius }: { state: BattleState; center: Vec2;
       />
       <Circle cx={center.x - eyeOffset} cy={center.y - radius * 0.15} r={radius * 0.1} color={colors.text} />
       <Circle cx={center.x + eyeOffset} cy={center.y - radius * 0.15} r={radius * 0.1} color={colors.text} />
-      {state.opponentSplats.map((s) => (
+      {splats.map((s) => (
         <SplatShape key={s.id} splat={s} />
       ))}
     </Group>
   );
 }
 
-export function BattleCanvas({ battle }: { battle: UseBattleResult }) {
-  const { state, layout, nowMs } = battle;
-  const coverage = state.playerSplat / COVER_THRESHOLD;
+interface Props {
+  view: BattleViewState;
+  layout: BattleLayout;
+  nowMs: number;
+}
+
+export function BattleCanvas({ view, layout, nowMs }: Props) {
+  const coverage = view.playerSplat / COVER_THRESHOLD;
   // vision-obscured film ramps in over the last third of the meter
   const filmOpacity = Math.max(0, (coverage - 0.65) / 0.35) * 0.55;
 
   return (
     <Canvas style={StyleSheet.absoluteFill}>
-      <Opponent state={state} center={layout.opponentCenter} radius={layout.opponentRadius} />
+      <Opponent
+        splats={view.opponentSplats}
+        center={layout.opponentCenter}
+        radius={layout.opponentRadius}
+      />
 
-      {state.projectiles.map((p) => {
+      {view.projectiles.map((p) => {
         const { pos, t } = projectilePosition(p, nowMs);
         // outgoing tomatoes shrink into the distance, incoming ones grow at you
         const r = p.direction === "outgoing" ? 22 - 14 * t : 10 + 52 * t;
@@ -94,7 +110,7 @@ export function BattleCanvas({ battle }: { battle: UseBattleResult }) {
       })}
 
       {/* splats covering YOUR view — this is the splat meter made visible */}
-      {state.screenSplats.map((s) => (
+      {view.screenSplats.map((s) => (
         <SplatShape key={s.id} splat={s} />
       ))}
 

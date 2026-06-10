@@ -1,0 +1,24 @@
+{
+  "name": "@tomatina/game-server",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@colyseus/core": "~0.16.24",
+    "@colyseus/schema": "^3.0.0",
+    "@colyseus/ws-transport": "~0.16.5",
+    "@tomatina/protocol": "workspace:*",
+    "@tomatina/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "colyseus.js": "~0.16.22",
+    "tsx": "^4.22.4",
+    "typescript": "~6.0.3"
+  }
+}

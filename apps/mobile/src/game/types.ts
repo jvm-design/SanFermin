@@ -31,6 +31,22 @@ export interface Splat {
   color: string;
 }
 
-export type RoundOutcome = "covered" | "coveredThem";
+export type RoundOutcome = "covered" | "coveredThem" | "opponentLeft";
 
 export type BattlePhase = "active" | "ended";
+
+/** What the battle canvas renders — shared by practice and online battles. */
+export interface BattleViewState {
+  playerSplat: number;
+  opponentSplat: number;
+  projectiles: Projectile[];
+  screenSplats: Splat[];
+  opponentSplats: Splat[];
+}
+
+export interface BattleLayout {
+  width: number;
+  height: number;
+  opponentCenter: Vec2;
+  opponentRadius: number;
+}

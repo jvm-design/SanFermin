@@ -12,6 +12,7 @@ interface Props {
   onLeave: () => void;
 }
 
+/** Practice round against the scripted Phase 0 bot. Fully offline. */
 export function BattleScreen({ onRoundEnd, onLeave }: Props) {
   const { width, height } = useWindowDimensions();
   const battle = useBattle(width, height, onRoundEnd);
@@ -19,12 +20,12 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
   return (
     <View style={styles.container}>
       <Pressable style={StyleSheet.absoluteFill} onPress={battle.throwTomato}>
-        <BattleCanvas battle={battle} />
+        <BattleCanvas view={battle.view} layout={battle.layout} nowMs={battle.nowMs} />
       </Pressable>
 
       <View style={styles.hud} pointerEvents="box-none">
-        <SplatMeter label="You" value={battle.state.playerSplat} />
-        <SplatMeter label="Them" value={battle.state.opponentSplat} />
+        <SplatMeter label="You" value={battle.view.playerSplat} />
+        <SplatMeter label="Them" value={battle.view.opponentSplat} />
       </View>
 
       <Pressable style={styles.leave} onPress={onLeave} hitSlop={12}>

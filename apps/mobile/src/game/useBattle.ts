@@ -2,7 +2,13 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import { COVER_THRESHOLD, SPLAT_PER_HIT } from "@tomatina/shared";
 import { makeOpponentSplat, makeScreenSplat } from "./splats";
-import { BattlePhase, Projectile, RoundOutcome, Splat, Vec2 } from "./types";
+import {
+  BattleLayout,
+  BattlePhase,
+  BattleViewState,
+  Projectile,
+  RoundOutcome,
+} from "./types";
 
 const OUTGOING_FLIGHT_MS = 420;
 const INCOMING_FLIGHT_MS = 650;
@@ -13,25 +19,13 @@ const OPPONENT_THROW_MAX_MS = 2600;
 /** Pause on the fully covered screen before moving to the result. */
 const ROUND_END_LINGER_MS = 1100;
 
-export interface BattleState {
+interface BotBattleState extends BattleViewState {
   phase: BattlePhase;
-  playerSplat: number;
-  opponentSplat: number;
-  projectiles: Projectile[];
-  screenSplats: Splat[];
-  opponentSplats: Splat[];
-}
-
-interface Layout {
-  width: number;
-  height: number;
-  opponentCenter: Vec2;
-  opponentRadius: number;
 }
 
 export interface UseBattleResult {
-  state: BattleState;
-  layout: Layout;
+  view: BattleViewState;
+  layout: BattleLayout;
   nowMs: number;
   /** Player throw. The tomato launches from the bottom toward the opponent. */
   throwTomato: () => void;
@@ -42,14 +36,14 @@ export function useBattle(
   height: number,
   onRoundEnd: (outcome: RoundOutcome) => void,
 ): UseBattleResult {
-  const layoutRef = useRef<Layout>({
+  const layoutRef = useRef<BattleLayout>({
     width,
     height,
     opponentCenter: { x: width / 2, y: height * 0.24 },
     opponentRadius: Math.min(width, height) * 0.13,
   });
 
-  const stateRef = useRef<BattleState>({
+  const stateRef = useRef<BotBattleState>({
     phase: "active",
     playerSplat: 0,
     opponentSplat: 0,
@@ -178,7 +172,7 @@ export function useBattle(
   }, []);
 
   return {
-    state: stateRef.current,
+    view: stateRef.current,
     layout: layoutRef.current,
     nowMs: nowRef.current,
     throwTomato,
