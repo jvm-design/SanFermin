@@ -11,10 +11,27 @@ export const TICK_HZ = 15;
 export const COVER_THRESHOLD = 100;
 
 /**
- * Geohash precision for proximity zones (~1.2 km cell).
+ * Geohash precision for proximity zones (~1.2 km cell). Used for presence
+ * counts ("N active nearby") and matchmaking pre-filtering only.
  * [validate desired zone size for the beachhead]
  */
 export const GEOHASH_PRECISION = 6;
+
+/**
+ * Max distance between two users for a battle (docs/decisions/0005).
+ * Founder spec: 17.84 m (a 1000 m² circle) rounded up to 20. Hard cap —
+ * on queue timeout we surface a tomato hour rather than widen it.
+ * Server-side check only; clients never see anyone's coordinates.
+ */
+export const BATTLE_RADIUS_M = 20;
+
+/**
+ * Tolerance added to BATTLE_RADIUS_M to absorb GPS error (phones report
+ * 5-20 m+ horizontal accuracy, worse indoors). Effective check:
+ * distance <= BATTLE_RADIUS_M + min(accA + accB, GPS_ACCURACY_BUFFER_M).
+ * [validate in the beachhead field test]
+ */
+export const GPS_ACCURACY_BUFFER_M = 25;
 
 /** MVP cap. Do not raise without approval (see BUILD-PLAN Phase 3). */
 export const BATTLE_MAX_PLAYERS = 2;

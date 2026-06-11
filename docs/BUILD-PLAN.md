@@ -40,7 +40,7 @@ Tasks:
 - Presence service: client opt in writes presence to Redis keyed by geohash zone, instantly revocable including mid battle.
 - Expose only a zone level "N active nearby" count to clients. Never coordinates.
 - Notifications: alert a user when there are active players nearby, rate limited.
-- Matchmaker: pool active users by zone plus a time window, spin a BattleRoom for 2. On QUEUE_TIMEOUT_S, widen the zone or surface a tomato hour.
+- Matchmaker: pool active users by zone plus a time window, then require server-side distance <= BATTLE_RADIUS_M (20 m hard cap, docs/decisions/0005), spin a BattleRoom for 2. On QUEUE_TIMEOUT_S, surface a tomato hour.
 - Consent gates: open but escapable battle, block plus report that excludes from future matchmaking, covered then mutual reveal then a Stream chat thread.
 - Media in chat: upload runs through moderation (Hive or Rekognition) and is delivered pull based, never auto pushed.
 - Instrument the kill gates: log battles_started, active_session, completed_battle, mutual_chat_opt_in as raw events.
