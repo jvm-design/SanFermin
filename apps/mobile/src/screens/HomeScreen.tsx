@@ -5,9 +5,12 @@ import { colors } from "../theme";
 interface Props {
   onBattleOnline: () => void;
   onPractice: () => void;
+  /** null = Supabase not configured; auth UI hidden. */
+  signedIn: boolean | null;
+  onSignIn: () => void;
 }
 
-export function HomeScreen({ onBattleOnline, onPractice }: Props) {
+export function HomeScreen({ onBattleOnline, onPractice, signedIn, onSignIn }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.emoji}>🍅</Text>
@@ -22,9 +25,17 @@ export function HomeScreen({ onBattleOnline, onPractice }: Props) {
       <Pressable style={styles.secondary} onPress={onPractice}>
         <Text style={styles.secondaryText}>Practice vs bot</Text>
       </Pressable>
+      {signedIn === false && (
+        <Pressable style={styles.avatarCta} onPress={onSignIn}>
+          <Text style={styles.avatarCtaText}>🎭 Create my anonymous avatar (18+)</Text>
+        </Pressable>
+      )}
+      {signedIn === true && (
+        <Text style={styles.avatarReady}>🎭 Anonymous avatar ready</Text>
+      )}
       <Text style={styles.note}>
-        Phase 1 demo — online battles join by room code. No location, no
-        matchmaking yet.
+        Phase 2 in progress — online battles join by room code. No location
+        yet.
       </Text>
     </View>
   );
@@ -62,6 +73,16 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.white, fontSize: 20, fontWeight: "700" },
   secondary: { paddingHorizontal: 44, paddingVertical: 12 },
   secondaryText: { color: colors.textDim, fontSize: 16, fontWeight: "600" },
+  avatarCta: {
+    marginTop: 18,
+    borderColor: colors.textDim,
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+  },
+  avatarCtaText: { color: colors.textDim, fontSize: 14, fontWeight: "600" },
+  avatarReady: { marginTop: 18, color: colors.stem, fontSize: 14, fontWeight: "700" },
   note: {
     position: "absolute",
     bottom: 36,

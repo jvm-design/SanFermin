@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
+import { supabase } from "./src/lib/supabase";
+import { AuthScreen } from "./src/screens/AuthScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { BattleScreen } from "./src/screens/BattleScreen";
 import { JoinScreen } from "./src/screens/JoinScreen";
@@ -15,6 +17,7 @@ type Origin = { mode: "practice" } | { mode: "online"; code: string };
 
 type Screen =
   | { name: "home" }
+  | { name: "auth" }
   | { name: "practice" }
   | { name: "join" }
   | { name: "online"; code: string }
@@ -25,6 +28,17 @@ type Screen =
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
+  // null = Supabase not configured (auth UI hidden)
+  const [signedIn, setSignedIn] = useState<boolean | null>(supabase ? false : null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedIn(!!session);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   const rematch = (origin: Origin) =>
     setScreen(
@@ -40,6 +54,14 @@ export default function App() {
         <HomeScreen
           onBattleOnline={() => setScreen({ name: "join" })}
           onPractice={() => setScreen({ name: "practice" })}
+          signedIn={signedIn}
+          onSignIn={() => setScreen({ name: "auth" })}
+        />
+      )}
+      {screen.name === "auth" && (
+        <AuthScreen
+          onDone={() => setScreen({ name: "home" })}
+          onCancel={() => setScreen({ name: "home" })}
         />
       )}
       {screen.name === "practice" && (
