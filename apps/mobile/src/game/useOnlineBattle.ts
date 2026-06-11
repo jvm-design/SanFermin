@@ -22,14 +22,21 @@ const ROUND_END_LINGER_MS = 1100;
 
 export type OnlineStatus = "connecting" | "waiting" | "active" | "ended" | "error";
 
+export interface OnlineThrowOptions {
+  /** Launch point (where the flick released). Defaults to the rest spot. */
+  from?: { x: number; y: number };
+  /** -1..1 horizontal flick direction, bends the shot left/right. */
+  lateralBias?: number;
+}
+
 export interface UseOnlineBattleResult {
   status: OnlineStatus;
   errorMessage: string | null;
   view: BattleViewState;
   layout: BattleLayout;
   nowMs: number;
-  /** Send a throw intent. aim is the normalized tap point, cosmetic only. */
-  throwTomato: (aimX: number, aimY: number) => void;
+  /** Send a throw intent. aim is the normalized splat point, cosmetic only. */
+  throwTomato: (aimX: number, aimY: number, opts?: OnlineThrowOptions) => void;
   /** Leave the battle (always escapable). */
   leave: () => void;
 }
@@ -101,32 +108,21 @@ export function useOnlineBattle(
         });
 
         room.onMessage(MSG_THROWN, (e: ThrownEvent) => {
+          // Own throws are animated locally at send time for instant feel;
+          // splat METERS still come exclusively from server state.
+          if (e.bySessionId === room!.sessionId) return;
           const layout = layoutRef.current;
-          const mine = e.bySessionId === room!.sessionId;
-          const jitter = layout.opponentRadius * 0.5;
           viewRef.current.projectiles = [
             ...viewRef.current.projectiles,
-            mine
-              ? {
-                  id: nextProjectileId.current++,
-                  direction: "outgoing" as const,
-                  from: { x: layout.width / 2, y: layout.height - 90 },
-                  to: {
-                    x: layout.opponentCenter.x + (Math.random() - 0.5) * 2 * jitter,
-                    y: layout.opponentCenter.y + (Math.random() - 0.5) * 2 * jitter,
-                  },
-                  startedAt: Date.now(),
-                  durationMs: OUTGOING_FLIGHT_MS,
-                }
-              : {
-                  id: nextProjectileId.current++,
-                  direction: "incoming" as const,
-                  from: layout.opponentCenter,
-                  // their aim point lands on MY screen
-                  to: { x: e.aimX * layout.width, y: e.aimY * layout.height },
-                  startedAt: Date.now(),
-                  durationMs: INCOMING_FLIGHT_MS,
-                },
+            {
+              id: nextProjectileId.current++,
+              direction: "incoming" as const,
+              from: layout.opponentCenter,
+              // their aim point lands on MY screen
+              to: { x: e.aimX * layout.width, y: e.aimY * layout.height },
+              startedAt: Date.now(),
+              durationMs: INCOMING_FLIGHT_MS,
+            },
           ];
         });
 
@@ -210,20 +206,45 @@ export function useOnlineBattle(
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const throwTomato = useCallback((aimX: number, aimY: number) => {
-    const room = roomRef.current;
-    if (!room || statusRef.current !== "active") return;
-    // respect the cooldown locally for feel; the server enforces it anyway
-    const now = Date.now();
-    if (now - lastThrowRef.current < THROW_COOLDOWN_MS) return;
-    lastThrowRef.current = now;
-    const msg: ThrowEvent = {
-      aimX: Math.min(1, Math.max(0, aimX)),
-      aimY: Math.min(1, Math.max(0, aimY)),
-    };
-    room.send(MSG_THROW, msg);
-    Haptics.selectionAsync().catch(() => {});
-  }, []);
+  const throwTomato = useCallback(
+    (aimX: number, aimY: number, opts?: OnlineThrowOptions) => {
+      const room = roomRef.current;
+      if (!room || statusRef.current !== "active") return;
+      // respect the cooldown locally for feel; the server enforces it anyway
+      const now = Date.now();
+      if (now - lastThrowRef.current < THROW_COOLDOWN_MS) return;
+      lastThrowRef.current = now;
+      const msg: ThrowEvent = {
+        aimX: Math.min(1, Math.max(0, aimX)),
+        aimY: Math.min(1, Math.max(0, aimY)),
+      };
+      room.send(MSG_THROW, msg);
+
+      // cosmetic local animation, instant even at high latency
+      const layout = layoutRef.current;
+      const bias = Math.max(-1, Math.min(1, opts?.lateralBias ?? 0));
+      const jitter = layout.opponentRadius * 0.35;
+      viewRef.current.projectiles = [
+        ...viewRef.current.projectiles,
+        {
+          id: nextProjectileId.current++,
+          direction: "outgoing",
+          from: opts?.from ?? { x: layout.width / 2, y: layout.height - 90 },
+          to: {
+            x:
+              layout.opponentCenter.x +
+              bias * layout.opponentRadius * 1.1 +
+              (Math.random() - 0.5) * 2 * jitter,
+            y: layout.opponentCenter.y + (Math.random() - 0.5) * 2 * jitter,
+          },
+          startedAt: now,
+          durationMs: OUTGOING_FLIGHT_MS,
+        },
+      ];
+      Haptics.selectionAsync().catch(() => {});
+    },
+    [],
+  );
 
   const leave = useCallback(() => {
     statusRef.current = "ended";

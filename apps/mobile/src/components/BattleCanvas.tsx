@@ -78,13 +78,21 @@ function Opponent({
   );
 }
 
+interface HeldTomatoView {
+  active: boolean;
+  x: number;
+  y: number;
+}
+
 interface Props {
   view: BattleViewState;
   layout: BattleLayout;
   nowMs: number;
+  /** The grabbable tomato (rests at the bottom, follows the finger). */
+  held?: HeldTomatoView;
 }
 
-export function BattleCanvas({ view, layout, nowMs }: Props) {
+export function BattleCanvas({ view, layout, nowMs, held }: Props) {
   const coverage = view.playerSplat / COVER_THRESHOLD;
   // vision-obscured film ramps in over the last third of the meter
   const filmOpacity = Math.max(0, (coverage - 0.65) / 0.35) * 0.55;
@@ -108,6 +116,22 @@ export function BattleCanvas({ view, layout, nowMs }: Props) {
           </Group>
         );
       })}
+
+      {/* the tomato in your hand — lifted above the finger while dragging */}
+      {held &&
+        (() => {
+          const hx = held.x;
+          const hy = held.active ? held.y - 48 : held.y;
+          const r = held.active ? 30 : 24;
+          return (
+            <Group>
+              <Circle cx={hx} cy={hy + r * 0.15} r={r * 1.05} color="#000000" opacity={0.25} />
+              <Circle cx={hx} cy={hy} r={r} color={colors.tomato} />
+              <Circle cx={hx - r * 0.3} cy={hy - r * 0.35} r={r * 0.25} color="#f08573" opacity={0.7} />
+              <Circle cx={hx} cy={hy - r * 0.85} r={r * 0.22} color={colors.stem} />
+            </Group>
+          );
+        })()}
 
       {/* splats covering YOUR view — this is the splat meter made visible */}
       {view.screenSplats.map((s) => (

@@ -23,12 +23,19 @@ interface BotBattleState extends BattleViewState {
   phase: BattlePhase;
 }
 
+export interface ThrowOptions {
+  /** Launch point (where the flick released). Defaults to the rest spot. */
+  from?: { x: number; y: number };
+  /** -1..1 horizontal flick direction, bends the shot left/right. */
+  lateralBias?: number;
+}
+
 export interface UseBattleResult {
   view: BattleViewState;
   layout: BattleLayout;
   nowMs: number;
   /** Player throw. The tomato launches from the bottom toward the opponent. */
-  throwTomato: () => void;
+  throwTomato: (opts?: ThrowOptions) => void;
 }
 
 export function useBattle(
@@ -146,22 +153,26 @@ export function useBattle(
     return () => clearTimeout(timer);
   }, []);
 
-  const throwTomato = useCallback(() => {
+  const throwTomato = useCallback((opts?: ThrowOptions) => {
     const s = stateRef.current;
     const layout = layoutRef.current;
     const now = Date.now();
     if (s.phase !== "active") return;
     if (now - lastThrowRef.current < THROW_COOLDOWN_MS) return;
     lastThrowRef.current = now;
-    const jitter = layout.opponentRadius * 0.5;
+    const bias = Math.max(-1, Math.min(1, opts?.lateralBias ?? 0));
+    const jitter = layout.opponentRadius * 0.35;
     s.projectiles = [
       ...s.projectiles,
       {
         id: nextProjectileId.current++,
         direction: "outgoing",
-        from: { x: layout.width / 2, y: layout.height - 90 },
+        from: opts?.from ?? { x: layout.width / 2, y: layout.height - 90 },
         to: {
-          x: layout.opponentCenter.x + (Math.random() - 0.5) * 2 * jitter,
+          x:
+            layout.opponentCenter.x +
+            bias * layout.opponentRadius * 1.1 +
+            (Math.random() - 0.5) * 2 * jitter,
           y: layout.opponentCenter.y + (Math.random() - 0.5) * 2 * jitter,
         },
         startedAt: now,

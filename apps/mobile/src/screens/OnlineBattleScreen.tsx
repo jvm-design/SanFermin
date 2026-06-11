@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  GestureResponderEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
 } from "react-native";
 import { RoundOutcome } from "../game/types";
 import { useOnlineBattle } from "../game/useOnlineBattle";
+import { ThrowRelease, useThrowGesture } from "../game/useThrowGesture";
 import { BattleCanvas } from "../components/BattleCanvas";
 import { SplatMeter } from "../components/SplatMeter";
 import { colors } from "../theme";
@@ -25,10 +25,19 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
   const { width, height } = useWindowDimensions();
   const battle = useOnlineBattle(code, width, height, onRoundEnd);
 
-  const handlePress = (e: GestureResponderEvent) => {
-    const { locationX, locationY } = e.nativeEvent;
-    battle.throwTomato(locationX / width, locationY / height);
-  };
+  const restPos = useMemo(() => ({ x: width / 2, y: height - 90 }), [width, height]);
+  const { throwTomato } = battle;
+  const handleThrow = useCallback(
+    (r: ThrowRelease) => {
+      const bias = r.tap ? 0 : Math.max(-1, Math.min(1, r.vx / 1.5));
+      // the flick direction decides where the splat lands on THEIR screen
+      const aimX = 0.5 + bias * 0.35;
+      const aimY = 0.25 + Math.random() * 0.4;
+      throwTomato(aimX, aimY, { from: r.from, lateralBias: bias });
+    },
+    [throwTomato],
+  );
+  const { panHandlers, dragRef } = useThrowGesture(restPos, handleThrow);
 
   const leaveBattle = () => {
     battle.leave();
@@ -49,9 +58,14 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
 
   return (
     <View style={styles.container}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={handlePress}>
-        <BattleCanvas view={battle.view} layout={battle.layout} nowMs={battle.nowMs} />
-      </Pressable>
+      <View style={StyleSheet.absoluteFill} {...panHandlers}>
+        <BattleCanvas
+          view={battle.view}
+          layout={battle.layout}
+          nowMs={battle.nowMs}
+          held={dragRef.current}
+        />
+      </View>
 
       <View style={styles.hud} pointerEvents="box-none">
         <SplatMeter label="You" value={battle.view.playerSplat} />
@@ -74,7 +88,7 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
 
       {battle.status === "active" && (
         <Text style={styles.hint} pointerEvents="none">
-          Tap to throw
+          Flick the tomato at them — or tap
         </Text>
       )}
     </View>
