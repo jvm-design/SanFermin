@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import * as Haptics from "expo-haptics";
-import { COVER_THRESHOLD, SPLAT_PER_HIT } from "@tomatina/shared";
+import { COUNTDOWN_MS, COVER_THRESHOLD, SPLAT_PER_HIT } from "@tomatina/shared";
 import { makeOpponentSplat, makeScreenSplat } from "./splats";
 import {
   BattleLayout,
@@ -18,8 +18,6 @@ const OPPONENT_THROW_MIN_MS = 1400;
 const OPPONENT_THROW_MAX_MS = 2600;
 /** Pause on the fully covered screen before moving to the result. */
 const ROUND_END_LINGER_MS = 1100;
-/** Pre-battle countdown: 3… 2… 1… GO! */
-const COUNTDOWN_MS = 3000;
 
 interface BotBattleState extends BattleViewState {
   phase: BattlePhase;

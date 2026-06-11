@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import { Client, Room } from "colyseus.js";
-import { THROW_COOLDOWN_MS } from "@tomatina/shared";
+import { COUNTDOWN_MS, THROW_COOLDOWN_MS } from "@tomatina/shared";
 import {
   BattleStateView,
   MSG_ROUND_END,
@@ -20,7 +20,13 @@ const INCOMING_FLIGHT_MS = 650;
 /** Pause on the fully covered screen before moving to the result. */
 const ROUND_END_LINGER_MS = 1100;
 
-export type OnlineStatus = "connecting" | "waiting" | "active" | "ended" | "error";
+export type OnlineStatus =
+  | "connecting"
+  | "waiting"
+  | "countdown"
+  | "active"
+  | "ended"
+  | "error";
 
 export interface OnlineThrowOptions {
   /** Launch point (where the flick released). Defaults to the rest spot. */
@@ -35,6 +41,8 @@ export interface UseOnlineBattleResult {
   view: BattleViewState;
   layout: BattleLayout;
   nowMs: number;
+  /** Local epoch ms when the server countdown unlocks throwing. */
+  countdownEndsAt: number;
   /** Send a throw intent. aim is the normalized splat point, cosmetic only. */
   throwTomato: (aimX: number, aimY: number, opts?: OnlineThrowOptions) => void;
   /** Leave the battle (always escapable). */
@@ -67,6 +75,7 @@ export function useOnlineBattle(
     opponentSplats: [],
   });
   const statusRef = useRef<OnlineStatus>("connecting");
+  const countdownEndsAtRef = useRef(0);
   const errorRef = useRef<string | null>(null);
   const roomRef = useRef<Room<BattleStateView> | null>(null);
   const nowRef = useRef(Date.now());
@@ -101,7 +110,17 @@ export function useOnlineBattle(
           });
           viewRef.current.playerSplat = me?.splat ?? 0;
           viewRef.current.opponentSplat = opponentSplat;
-          if (statusRef.current === "waiting" && state.phase === "active") {
+          if (statusRef.current === "waiting" && state.phase === "countdown") {
+            // The server clock drives the real unlock; this local deadline
+            // only renders the 3-2-1 numbers.
+            statusRef.current = "countdown";
+            countdownEndsAtRef.current = Date.now() + COUNTDOWN_MS;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          }
+          if (
+            (statusRef.current === "waiting" || statusRef.current === "countdown") &&
+            state.phase === "active"
+          ) {
             statusRef.current = "active";
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           }
@@ -257,6 +276,7 @@ export function useOnlineBattle(
     view: viewRef.current,
     layout: layoutRef.current,
     nowMs: nowRef.current,
+    countdownEndsAt: countdownEndsAtRef.current,
     throwTomato,
     leave,
   };

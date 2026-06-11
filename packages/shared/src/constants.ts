@@ -42,6 +42,9 @@ export const QUEUE_TIMEOUT_S = 60;
 /** Splat percent added per tomato hit. ~10 hits to be covered. */
 export const SPLAT_PER_HIT = 10;
 
+/** Pre-battle countdown (3… 2… 1… GO), server-driven for online rounds. */
+export const COUNTDOWN_MS = 3000;
+
 /**
  * Min ms between throws per player. Enforced server side (never trust the
  * client); the client also respects it locally for feel.

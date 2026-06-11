@@ -2,6 +2,7 @@ import { Client, Room } from "@colyseus/core";
 import { MapSchema, Schema, type } from "@colyseus/schema";
 import {
   BATTLE_MAX_PLAYERS,
+  COUNTDOWN_MS,
   COVER_THRESHOLD,
   SPLAT_PER_HIT,
   THROW_COOLDOWN_MS,
@@ -53,7 +54,11 @@ export class BattleRoom extends Room<BattleRoomState> {
     this.state.players.set(client.sessionId, new PlayerState());
     if (this.state.players.size === BATTLE_MAX_PLAYERS) {
       this.lock();
-      this.state.phase = "active";
+      // 3-2-1-GO: both clients unlock at the same server-driven moment.
+      this.state.phase = "countdown";
+      this.clock.setTimeout(() => {
+        if (this.state.phase === "countdown") this.state.phase = "active";
+      }, COUNTDOWN_MS);
     }
   }
 
@@ -61,7 +66,7 @@ export class BattleRoom extends Room<BattleRoomState> {
     const player = this.state.players.get(client.sessionId);
     if (player) player.connected = false;
 
-    if (this.state.phase === "active") {
+    if (this.state.phase === "active" || this.state.phase === "countdown") {
       // Opponent dropped or left: end cleanly. No win by disconnect, no
       // penalty for the remaining player (BUILD-PLAN Phase 1).
       this.endRound("playerLeft", null);

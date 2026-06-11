@@ -6,7 +6,7 @@
  * the single typing surface clients use to read `room.state`.
  */
 
-export type BattlePhase = "waiting" | "active" | "ended";
+export type BattlePhase = "waiting" | "countdown" | "active" | "ended";
 
 export interface PlayerStateView {
   /** Authoritative splat meter, 0..COVER_THRESHOLD. */
