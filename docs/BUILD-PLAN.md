@@ -55,7 +55,7 @@ Acceptance:
 Only if both kill gates clear in the beachhead:
 - Raise BATTLE_MAX_PLAYERS for the N player melee, with per attacker incoming caps to prevent pile on.
 - Add the camera AR background.
-- Add cosmetics and monetization.
+- Add cosmetics and monetization. Token economy is pre-specified in docs/decisions/0004-token-economy.md (ships dark behind TOKENS_ENABLED).
 - Open a second zone.
 
 If the liquidity gate fails in the single best beachhead, the loop cannot spin and the concept is structurally blocked. Surface that finding rather than expanding to hide it.

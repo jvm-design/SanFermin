@@ -43,3 +43,35 @@ export const NEARBY_PING_RATE_LIMIT: RateLimit = { windowS: 60, max: 6 };
 
 /** Server-side limit on battle initiations per client. */
 export const BATTLE_INIT_RATE_LIMIT: RateLimit = { windowS: 300, max: 10 };
+
+// ---- Token economy (docs/decisions/0004) ----
+// Specified for Phase 3, ships DARK: must stay disabled during the
+// beachhead experiment or the liquidity kill gate becomes unreadable.
+
+/** Master switch. Do not enable before the liquidity gate passes. */
+export const TOKENS_ENABLED = false;
+
+/** Initiating an online battle costs this many tokens. Receiving is free. */
+export const TOKEN_COST_BATTLE_INIT = 1;
+
+/** Free-tier weekly allowance (balance := max(balance, allowance)). */
+export const WEEKLY_FREE_TOKENS = 3;
+
+/** Max tokens a free user can hold (earning fills up to this cap). */
+export const TOKEN_CAP_FREE = 4;
+
+/** Online battles won per token earned. Practice never counts. */
+export const WINS_PER_TOKEN = 3;
+
+export interface SubscriptionTier {
+  /** Display price in EUR. [validate: snap to store price tiers] */
+  eur: number;
+  /** Weekly token allowance; null = unlimited for the week. */
+  weeklyTokens: number | null;
+}
+
+export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
+  { eur: 1, weeklyTokens: 5 },
+  { eur: 9.99, weeklyTokens: 10 },
+  { eur: 20, weeklyTokens: null },
+];
