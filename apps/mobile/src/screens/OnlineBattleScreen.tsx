@@ -12,6 +12,7 @@ import { useOnlineBattle } from "../game/useOnlineBattle";
 import { ThrowRelease, useThrowGesture } from "../game/useThrowGesture";
 import { BattleCanvas } from "../components/BattleCanvas";
 import { SplatMeter } from "../components/SplatMeter";
+import { BUILD_TAG } from "../buildTag";
 import { colors } from "../theme";
 
 interface Props {
@@ -57,7 +58,7 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={StyleSheet.absoluteFill} {...panHandlers}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BattleCanvas
           view={battle.view}
           layout={battle.layout}
@@ -65,6 +66,9 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
           held={dragRef.current}
         />
       </View>
+
+      {/* topmost touch layer: nothing can steal the throw gesture */}
+      <View style={StyleSheet.absoluteFill} collapsable={false} {...panHandlers} />
 
       <View style={styles.hud} pointerEvents="box-none">
         <SplatMeter label="You" value={battle.view.playerSplat} />
@@ -89,7 +93,7 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
         <Text style={styles.hint} pointerEvents="none">
           {dragRef.current.active
             ? "Release upward to throw! 🍅💨"
-            : "Grab the tomato and flick it — or tap"}
+            : `Grab the tomato and flick it — or tap (${BUILD_TAG})`}
         </Text>
       )}
     </View>
