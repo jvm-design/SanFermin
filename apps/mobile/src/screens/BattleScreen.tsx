@@ -52,6 +52,19 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
         <Text style={styles.leaveText}>✕ Leave</Text>
       </Pressable>
 
+      {battle.phase === "countdown" && (
+        <View style={styles.countdown} pointerEvents="none">
+          <Text style={styles.countdownText}>
+            {Math.max(1, Math.ceil((battle.countdownEndsAt - battle.nowMs) / 1000))}
+          </Text>
+        </View>
+      )}
+      {battle.phase === "active" && battle.nowMs - battle.countdownEndsAt < 700 && (
+        <View style={styles.countdown} pointerEvents="none">
+          <Text style={styles.countdownText}>GO! 🍅</Text>
+        </View>
+      )}
+
       <Text style={styles.hint} pointerEvents="none">
         {dragRef.current.active
           ? "Release upward to throw! 🍅💨"
@@ -80,6 +93,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   leaveText: { color: colors.textDim, fontSize: 14, fontWeight: "600" },
+  countdown: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countdownText: {
+    color: colors.text,
+    fontSize: 84,
+    fontWeight: "900",
+    textShadowColor: colors.tomatoDeep,
+    textShadowRadius: 18,
+    textShadowOffset: { width: 0, height: 2 },
+  },
   hint: {
     position: "absolute",
     bottom: 28,

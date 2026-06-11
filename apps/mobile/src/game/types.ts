@@ -33,7 +33,7 @@ export interface Splat {
 
 export type RoundOutcome = "covered" | "coveredThem" | "opponentLeft";
 
-export type BattlePhase = "active" | "ended";
+export type BattlePhase = "countdown" | "active" | "ended";
 
 /** What the battle canvas renders — shared by practice and online battles. */
 export interface BattleViewState {

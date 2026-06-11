@@ -18,6 +18,8 @@ const OPPONENT_THROW_MIN_MS = 1400;
 const OPPONENT_THROW_MAX_MS = 2600;
 /** Pause on the fully covered screen before moving to the result. */
 const ROUND_END_LINGER_MS = 1100;
+/** Pre-battle countdown: 3… 2… 1… GO! */
+const COUNTDOWN_MS = 3000;
 
 interface BotBattleState extends BattleViewState {
   phase: BattlePhase;
@@ -34,6 +36,9 @@ export interface UseBattleResult {
   view: BattleViewState;
   layout: BattleLayout;
   nowMs: number;
+  phase: BattlePhase;
+  /** Epoch ms when the countdown ends and throwing unlocks. */
+  countdownEndsAt: number;
   /** Player throw. The tomato launches from the bottom toward the opponent. */
   throwTomato: (opts?: ThrowOptions) => void;
 }
@@ -51,13 +56,14 @@ export function useBattle(
   });
 
   const stateRef = useRef<BotBattleState>({
-    phase: "active",
+    phase: "countdown",
     playerSplat: 0,
     opponentSplat: 0,
     projectiles: [],
     screenSplats: [],
     opponentSplats: [],
   });
+  const countdownEndsAtRef = useRef(Date.now() + COUNTDOWN_MS);
   const nowRef = useRef(Date.now());
   const lastThrowRef = useRef(0);
   const nextProjectileId = useRef(1);
@@ -109,6 +115,10 @@ export function useBattle(
       const s = stateRef.current;
       const now = Date.now();
       nowRef.current = now;
+      if (s.phase === "countdown" && now >= countdownEndsAtRef.current) {
+        s.phase = "active";
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      }
       const landed = s.projectiles.filter((p) => now - p.startedAt >= p.durationMs);
       if (landed.length > 0) {
         s.projectiles = s.projectiles.filter((p) => now - p.startedAt < p.durationMs);
@@ -130,6 +140,7 @@ export function useBattle(
       timer = setTimeout(() => {
         const s = stateRef.current;
         const layout = layoutRef.current;
+        if (s.phase === "ended") return;
         if (s.phase === "active") {
           s.projectiles = [
             ...s.projectiles,
@@ -145,8 +156,9 @@ export function useBattle(
               durationMs: INCOMING_FLIGHT_MS,
             },
           ];
-          scheduleNext();
         }
+        // during the countdown, just wait for the next slot
+        scheduleNext();
       }, delay);
     };
     scheduleNext();
@@ -186,6 +198,8 @@ export function useBattle(
     view: stateRef.current,
     layout: layoutRef.current,
     nowMs: nowRef.current,
+    phase: stateRef.current.phase,
+    countdownEndsAt: countdownEndsAtRef.current,
     throwTomato,
   };
 }
