@@ -102,8 +102,9 @@ export function useBattle(
   );
 
   // Frame loop: advance the clock, resolve landed projectiles, repaint.
+  // setInterval rather than requestAnimationFrame: it keeps ticking in
+  // every RN environment, including when rAF throttles or stalls.
   useEffect(() => {
-    let raf = 0;
     const step = () => {
       const s = stateRef.current;
       const now = Date.now();
@@ -114,10 +115,9 @@ export function useBattle(
         landed.forEach(resolveHit);
       }
       rerender();
-      raf = requestAnimationFrame(step);
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    const id = setInterval(step, 1000 / 60);
+    return () => clearInterval(id);
   }, [resolveHit]);
 
   // Scripted fake opponent: throws back on a randomized timer.

@@ -22,10 +22,7 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
   const { throwTomato } = battle;
   const handleThrow = useCallback(
     (r: ThrowRelease) => {
-      throwTomato({
-        from: r.from,
-        lateralBias: r.tap ? 0 : Math.max(-1, Math.min(1, r.vx / 1.5)),
-      });
+      throwTomato({ from: r.from, lateralBias: r.bias });
     },
     [throwTomato],
   );
@@ -52,7 +49,9 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
       </Pressable>
 
       <Text style={styles.hint} pointerEvents="none">
-        Flick the tomato at them — or tap
+        {dragRef.current.active
+          ? "Release upward to throw! 🍅💨"
+          : "Grab the tomato and flick it — or tap"}
       </Text>
     </View>
   );

@@ -29,11 +29,10 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
   const { throwTomato } = battle;
   const handleThrow = useCallback(
     (r: ThrowRelease) => {
-      const bias = r.tap ? 0 : Math.max(-1, Math.min(1, r.vx / 1.5));
       // the flick direction decides where the splat lands on THEIR screen
-      const aimX = 0.5 + bias * 0.35;
+      const aimX = 0.5 + r.bias * 0.35;
       const aimY = 0.25 + Math.random() * 0.4;
-      throwTomato(aimX, aimY, { from: r.from, lateralBias: bias });
+      throwTomato(aimX, aimY, { from: r.from, lateralBias: r.bias });
     },
     [throwTomato],
   );
@@ -88,7 +87,9 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
 
       {battle.status === "active" && (
         <Text style={styles.hint} pointerEvents="none">
-          Flick the tomato at them — or tap
+          {dragRef.current.active
+            ? "Release upward to throw! 🍅💨"
+            : "Grab the tomato and flick it — or tap"}
         </Text>
       )}
     </View>

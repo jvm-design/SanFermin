@@ -176,8 +176,9 @@ export function useOnlineBattle(
   }, [code]);
 
   // Frame loop: advance the clock, land cosmetic projectiles, repaint.
+  // setInterval rather than requestAnimationFrame: it keeps ticking in
+  // every RN environment, including when rAF throttles or stalls.
   useEffect(() => {
-    let raf = 0;
     const step = () => {
       const v = viewRef.current;
       const layout = layoutRef.current;
@@ -200,10 +201,9 @@ export function useOnlineBattle(
         }
       }
       rerender();
-      raf = requestAnimationFrame(step);
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    const id = setInterval(step, 1000 / 60);
+    return () => clearInterval(id);
   }, []);
 
   const throwTomato = useCallback(
