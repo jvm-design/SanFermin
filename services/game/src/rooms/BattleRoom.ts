@@ -17,6 +17,7 @@ import {
   RoundEndReason,
   ThrownEvent,
 } from "@tomatina/protocol";
+import { logEvent } from "../events";
 
 /** Keep an ended room around briefly so clients can read the result. */
 const DISPOSE_AFTER_END_MS = 30_000;
@@ -50,10 +51,17 @@ export class BattleRoom extends Room<BattleRoomState> {
     });
   }
 
+  private startedAt = 0;
+
   onJoin(client: Client) {
     this.state.players.set(client.sessionId, new PlayerState());
     if (this.state.players.size === BATTLE_MAX_PLAYERS) {
       this.lock();
+      this.startedAt = Date.now();
+      logEvent("battle_started", {
+        roomId: this.roomId,
+        sessionIds: [...this.state.players.keys()],
+      });
       // 3-2-1-GO: both clients unlock at the same server-driven moment.
       this.state.phase = "countdown";
       this.clock.setTimeout(() => {
@@ -116,6 +124,15 @@ export class BattleRoom extends Room<BattleRoomState> {
   private endRound(reason: RoundEndReason, coveredSessionId: string | null) {
     if (this.state.phase === "ended") return;
     this.state.phase = "ended";
+
+    logEvent(reason === "covered" ? "battle_completed" : "battle_abandoned", {
+      roomId: this.roomId,
+      sessionIds: [...this.state.players.keys()],
+      props: {
+        reason,
+        durationMs: this.startedAt > 0 ? Date.now() - this.startedAt : 0,
+      },
+    });
 
     const event: RoundEndEvent = { reason, coveredSessionId };
     this.broadcast(MSG_ROUND_END, event);
