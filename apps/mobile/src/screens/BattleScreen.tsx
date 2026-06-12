@@ -50,6 +50,7 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
         <ARBattleView
           getView={() => ({ view: battle.view, nowMs: battle.nowMs })}
           layoutWidth={battle.layout.width}
+          layoutHeight={battle.layout.height}
         />
       ) : (
         <CameraBackdrop enabled={cameraOn} />

@@ -106,6 +106,7 @@ export function OnlineBattleScreen({ target, signedIn, onRoundEnd, onLeave }: Pr
         <ARBattleView
           getView={() => ({ view: battle.view, nowMs: battle.nowMs })}
           layoutWidth={battle.layout.width}
+          layoutHeight={battle.layout.height}
         />
       ) : (
         <CameraBackdrop enabled={cameraOn} />
