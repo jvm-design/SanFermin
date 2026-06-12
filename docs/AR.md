@@ -5,7 +5,29 @@ The AR battle (decision 0007) uses a native engine (ViroReact/ARKit) that
 backdrop fallback. To see tomatoes flying through your actual room, you
 need a development build of the app. Two routes:
 
-## Route A — EAS cloud build (recommended; no Xcode, ~30 min + queue)
+## Route 0 — Android (fastest, completely free)
+
+No paid account needed — just a free expo.dev account and an Android
+phone that supports ARCore (most phones from 2018+; "Google Play
+Services for AR" installs itself from the Play Store).
+
+1. Create a free account at **expo.dev**.
+2. On the Mac:
+   ```bash
+   cd ~/SanFermin/apps/mobile
+   npx eas-cli login
+   npx eas-cli build --profile development --platform android
+   ```
+   Answer yes when it offers to generate an Android keystore.
+3. ~15-25 min later the terminal (and expo.dev) shows a link/QR for an
+   **APK**: open it on the Android phone, allow "install unknown apps",
+   install the **Tomatina dev app**.
+4. Start Metro as usual on the Mac (`pnpm mobile`), open the Tomatina
+   dev app on the phone (same Wi-Fi), pick the server it lists (or scan
+   the QR) — the app loads with the AR engine inside: battles open in
+   true AR automatically.
+
+## Route A — iOS via EAS cloud build (~30 min + queue)
 
 Prerequisite: an **Apple Developer Program** membership (developer.apple.com,
 99 €/year). It is also required for TestFlight and the App Store, so this
