@@ -9,6 +9,7 @@ interface Props {
   /** null = Supabase not configured; auth UI hidden. */
   signedIn: boolean | null;
   onSignIn: () => void;
+  onProfile: () => void;
 }
 
 export function HomeScreen({
@@ -17,6 +18,7 @@ export function HomeScreen({
   onPractice,
   signedIn,
   onSignIn,
+  onProfile,
 }: Props) {
   return (
     <View style={styles.container}>
@@ -41,7 +43,9 @@ export function HomeScreen({
         </Pressable>
       )}
       {signedIn === true && (
-        <Text style={styles.avatarReady}>🎭 Anonymous avatar ready</Text>
+        <Pressable onPress={onProfile} hitSlop={8}>
+          <Text style={styles.avatarReady}>🎭 Anonymous avatar ready — edit</Text>
+        </Pressable>
       )}
       <Text style={styles.note}>
         Phase 2 in progress — online battles join by room code. No location

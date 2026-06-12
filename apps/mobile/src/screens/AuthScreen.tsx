@@ -16,7 +16,7 @@ interface Props {
   onCancel: () => void;
 }
 
-type Step = "phone" | "code" | "adult";
+type Step = "phone" | "code" | "adult" | "name";
 
 /**
  * Anonymous account: phone-verified (one account per number — the
@@ -27,6 +27,7 @@ export function AuthScreen({ onDone, onCancel }: Props) {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +73,33 @@ export function AuthScreen({ onDone, onCancel }: Props) {
       .eq("id", userId);
     setBusy(false);
     if (err) setError(err.message);
-    else onDone();
+    else setStep("name");
+  };
+
+  const saveName = async () => {
+    if (!supabase) return;
+    const trimmed = name.trim();
+    if (trimmed.length === 0) {
+      onDone(); // skipping is fine — reveal falls back to an anonymous alias
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { data } = await supabase.auth.getUser();
+    const userId = data.user?.id;
+    if (userId) {
+      const { error: err } = await supabase
+        .from("profiles")
+        .update({ display_name: trimmed.slice(0, 24) })
+        .eq("id", userId);
+      if (err) {
+        setBusy(false);
+        setError(err.message);
+        return;
+      }
+    }
+    setBusy(false);
+    onDone();
   };
 
   const declineAdult = async () => {
@@ -163,6 +190,35 @@ export function AuthScreen({ onDone, onCancel }: Props) {
           </Pressable>
           <Pressable style={styles.secondary} onPress={declineAdult}>
             <Text style={styles.secondaryText}>I'm under 18 — leave</Text>
+          </Pressable>
+        </>
+      )}
+
+      {step === "name" && (
+        <>
+          <Text style={styles.emoji}>✨</Text>
+          <Text style={styles.title}>Your reveal name</Text>
+          <Text style={styles.subtitle}>
+            The name someone discovers if you BOTH say yes after a battle.
+            Hidden from everyone until then. You can change it later.
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Jaime"
+            placeholderTextColor={colors.textDim}
+            maxLength={24}
+            autoFocus
+          />
+          <Pressable style={styles.primary} disabled={busy} onPress={saveName}>
+            {busy ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.primaryText}>
+                {name.trim() ? "Save & play" : "Skip for now"}
+              </Text>
+            )}
           </Pressable>
         </>
       )}

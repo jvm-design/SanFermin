@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "./src/lib/supabase";
 import { AuthScreen } from "./src/screens/AuthScreen";
+import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { BattleScreen } from "./src/screens/BattleScreen";
 import { JoinScreen } from "./src/screens/JoinScreen";
@@ -24,6 +25,7 @@ type Origin =
 type Screen =
   | { name: "home" }
   | { name: "auth" }
+  | { name: "profile" }
   | { name: "practice" }
   | { name: "join" }
   | { name: "plaza" }
@@ -68,7 +70,11 @@ export default function App() {
           onPractice={() => setScreen({ name: "practice" })}
           signedIn={signedIn}
           onSignIn={() => setScreen({ name: "auth" })}
+          onProfile={() => setScreen({ name: "profile" })}
         />
+      )}
+      {screen.name === "profile" && (
+        <ProfileScreen onClose={() => setScreen({ name: "home" })} />
       )}
       {screen.name === "plaza" && (
         <PlazaScreen
