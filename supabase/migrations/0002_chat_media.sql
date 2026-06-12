@@ -10,6 +10,7 @@ insert into storage.buckets (id, name, public)
 values ('chat-media', 'chat-media', false)
 on conflict (id) do nothing;
 
+drop policy if exists "upload to own quarantine only" on storage.objects;
 create policy "upload to own quarantine only"
   on storage.objects for insert to authenticated
   with check (
