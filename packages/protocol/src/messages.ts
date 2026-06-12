@@ -107,8 +107,29 @@ export interface ChatCredentials {
   userId: string;
 }
 
+/**
+ * Shared "find each other" beacon: BOTH phones display the same
+ * emoji+color after a mutual reveal, so the two players can physically
+ * spot each other. Generated server-side, per reveal — consensual
+ * identification as a reward, never an opener (decision 0002).
+ */
+export interface BeaconInfo {
+  emoji: string;
+  color: string;
+}
+
 export interface RevealedInfo {
   opponentName: string;
+  beacon: BeaconInfo;
   /** Null when the chat service is not configured: client falls back. */
   chat: ChatCredentials | null;
 }
+
+// ---- post-battle: rematch (symmetric — no initiative rule) ----
+
+/** Either side -> server: I want a rematch. When both ask, the room
+ * resets for a fresh round with the same opponent, still anonymous. */
+export const MSG_REMATCH = "rematch" as const;
+
+/** Server -> the other player: opponent wants a rematch. */
+export const MSG_REMATCH_REQUESTED = "rematchRequested" as const;

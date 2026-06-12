@@ -12,24 +12,36 @@ interface Props {
    */
   role: "winner" | "loser";
   onRevealed: (info: RevealedInfo) => void;
-  /** Play another round, staying anonymous. */
+  /** Practice-mode rematch (no live opponent). */
   onRematch: () => void;
+  /** Live rematch: both agreed, the room reset — back to battle. */
+  onRematchStarted: () => void;
   onPassSent: () => void;
   onPassReceived: () => void;
   /** Session gone (opponent left / expired). */
   onClosed: () => void;
 }
 
-type Stage = "choosing" | "waitingAnswer" | "waitingProposal" | "responding";
+type Stage =
+  | "choosing"
+  | "waitingAnswer"
+  | "waitingProposal"
+  | "responding"
+  | "waitingRematch";
 
 /** Mock beat for practice rounds (no live opponent). */
 const MOCK_DECIDING_MS = 1800;
-const MOCK_REVEAL: RevealedInfo = { opponentName: "Tomato Tester", chat: null };
+const MOCK_REVEAL: RevealedInfo = {
+  opponentName: "Tomato Tester",
+  beacon: { emoji: "🍍", color: "#7c3aed" },
+  chat: null,
+};
 
 export function RevealConsentScreen({
   role,
   onRevealed,
   onRematch,
+  onRematchStarted,
   onPassSent,
   onPassReceived,
   onClosed,
@@ -37,11 +49,14 @@ export function RevealConsentScreen({
   const [stage, setStage] = useState<Stage>(
     role === "winner" ? "choosing" : "waitingProposal",
   );
+  const [rematchWanted, setRematchWanted] = useState(false);
 
   const reveal = useReveal({
     onRevealed,
     onProposed: () => setStage("responding"),
     onPassedByOpponent: onPassReceived,
+    onRematchRequested: () => setRematchWanted(true),
+    onRematchStarted,
     onClosed,
   });
 
@@ -77,22 +92,42 @@ export function RevealConsentScreen({
   };
 
   const rematch = () => {
-    reveal.release();
-    onRematch();
+    if (reveal.live) {
+      reveal.requestRematch();
+      setStage("waitingRematch");
+    } else {
+      reveal.release();
+      onRematch();
+    }
   };
 
-  if (stage === "waitingProposal" || stage === "waitingAnswer") {
+  if (
+    stage === "waitingProposal" ||
+    stage === "waitingAnswer" ||
+    stage === "waitingRematch"
+  ) {
     return (
       <View style={styles.container}>
         <ActivityIndicator color={colors.tomato} size="large" />
         <Text style={styles.title}>
-          {stage === "waitingProposal" ? "They won — they're deciding…" : "Waiting for them…"}
+          {stage === "waitingProposal"
+            ? "They won — they're deciding…"
+            : stage === "waitingRematch"
+              ? "Rematch sent! Waiting for them…"
+              : "Waiting for them…"}
         </Text>
         <Text style={styles.subtitle}>
           {stage === "waitingProposal"
             ? "The winner chooses whether to propose a chat."
-            : "Reveal happens only if you both say yes."}
+            : stage === "waitingRematch"
+              ? "If they say yes, the next round starts right here."
+              : "Reveal happens only if you both say yes."}
         </Text>
+        {rematchWanted && stage !== "waitingRematch" && (
+          <Pressable style={styles.rematchBanner} onPress={rematch}>
+            <Text style={styles.rematchBannerText}>🍅 They want a rematch! Tap to accept</Text>
+          </Pressable>
+        )}
         <Pressable style={styles.tertiary} onPress={pass}>
           <Text style={styles.tertiaryText}>It was fun — I'd rather just play</Text>
         </Pressable>
@@ -112,6 +147,9 @@ export function RevealConsentScreen({
           ? "Propose to reveal yourselves and chat, go again, or pass kindly. They'll have to agree too — reveal is always mutual."
           : "The winner proposes to reveal yourselves and chat. Your call now — reveal is always mutual."}
       </Text>
+      {rematchWanted && (
+        <Text style={styles.rematchHint}>🍅 They want a rematch!</Text>
+      )}
       <Pressable style={styles.primary} onPress={winner ? propose : accept}>
         <Text style={styles.primaryText}>
           {winner ? "Propose reveal & chat" : "Yes, reveal me"}
@@ -165,6 +203,15 @@ const styles = StyleSheet.create({
   secondaryText: { color: colors.tomato, fontSize: 16, fontWeight: "700" },
   tertiary: { paddingHorizontal: 36, paddingVertical: 10, marginTop: 6 },
   tertiaryText: { color: colors.textDim, fontSize: 15, fontWeight: "600" },
+  rematchHint: { color: colors.tomato, fontSize: 15, fontWeight: "700" },
+  rematchBanner: {
+    marginTop: 14,
+    backgroundColor: colors.tomato,
+    paddingHorizontal: 26,
+    paddingVertical: 12,
+    borderRadius: 26,
+  },
+  rematchBannerText: { color: colors.white, fontSize: 15, fontWeight: "700" },
   note: {
     position: "absolute",
     bottom: 36,

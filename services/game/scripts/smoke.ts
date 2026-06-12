@@ -13,6 +13,8 @@ import {
   MSG_NEARBY,
   MSG_POSITION,
   MSG_PROPOSE_REVEAL,
+  MSG_REMATCH,
+  MSG_REMATCH_REQUESTED,
   MSG_REVEAL_PROPOSED,
   MSG_REVEALED,
   MSG_ROUND_END,
@@ -131,7 +133,33 @@ async function testCoveredRound() {
     "loser learns the winner's identity",
   );
 
+  assert(
+    revealedA!.beacon.emoji === revealedB!.beacon.emoji &&
+      revealedA!.beacon.color === revealedB!.beacon.color,
+    "both players must see the SAME beacon",
+  );
+
   console.log("ok: reveal — winner initiative enforced, mutual consent unlocked identities");
+
+  // Rematch: both ask, the room resets in place for a fresh round.
+  let rematchSeenByB = false;
+  b.onMessage(MSG_REMATCH_REQUESTED, () => {
+    rematchSeenByB = true;
+    b.send(MSG_REMATCH);
+  });
+  a.send(MSG_REMATCH);
+  await waitFor(
+    () => a.state.phase === "countdown" || a.state.phase === "active",
+    "rematch round restarting",
+  );
+  assert(rematchSeenByB, "opponent must be told a rematch was requested");
+  await waitFor(() => a.state.phase === "active", "rematch round active", 8000);
+  assert(
+    splatOf(a, a.sessionId) === 0 && splatOf(a, b.sessionId) === 0,
+    "splat meters must reset for the rematch",
+  );
+
+  console.log("ok: rematch — mutual request reset the same room for a fresh round");
   await a.leave();
   await b.leave();
 }

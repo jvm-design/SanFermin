@@ -9,7 +9,8 @@ import { JoinScreen } from "./src/screens/JoinScreen";
 import { OnlineBattleScreen } from "./src/screens/OnlineBattleScreen";
 import { PlazaScreen } from "./src/screens/PlazaScreen";
 import { BattleTarget } from "./src/game/useOnlineBattle";
-import { ChatCredentials } from "@tomatina/protocol";
+import { BeaconScreen } from "./src/screens/BeaconScreen";
+import { BeaconInfo, ChatCredentials } from "@tomatina/protocol";
 import { CoveredScreen } from "./src/screens/CoveredScreen";
 import { RevealConsentScreen } from "./src/screens/RevealConsentScreen";
 import { FriendlyPassScreen } from "./src/screens/FriendlyPassScreen";
@@ -33,6 +34,7 @@ type Screen =
   | { name: "covered"; outcome: RoundOutcome; origin: Origin }
   | { name: "reveal"; won: boolean; origin: Origin }
   | { name: "pass"; variant: "sent" | "received" }
+  | { name: "beacon"; title: string; beacon: BeaconInfo; chat: ChatCredentials | null }
   | { name: "chat"; title: string; chat: ChatCredentials | null };
 
 export default function App() {
@@ -145,12 +147,29 @@ export default function App() {
         <RevealConsentScreen
           role={screen.won ? "winner" : "loser"}
           onRevealed={(info) =>
-            setScreen({ name: "chat", title: info.opponentName, chat: info.chat })
+            setScreen({
+              name: "beacon",
+              title: info.opponentName,
+              beacon: info.beacon,
+              chat: info.chat,
+            })
           }
           onRematch={() => rematch(screen.origin)}
+          onRematchStarted={() =>
+            setScreen({ name: "online", target: { kind: "session" } })
+          }
           onPassSent={() => setScreen({ name: "pass", variant: "sent" })}
           onPassReceived={() => setScreen({ name: "pass", variant: "received" })}
           onClosed={() => setScreen({ name: "home" })}
+        />
+      )}
+      {screen.name === "beacon" && (
+        <BeaconScreen
+          title={screen.title}
+          beacon={screen.beacon}
+          onContinue={() =>
+            setScreen({ name: "chat", title: screen.title, chat: screen.chat })
+          }
         />
       )}
       {screen.name === "pass" && (

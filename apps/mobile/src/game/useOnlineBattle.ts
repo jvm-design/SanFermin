@@ -35,10 +35,12 @@ export type OnlineStatus =
   | "ended"
   | "error";
 
-/** How to enter the battle: a manual room code, or a plaza match. */
+/** How to enter the battle: a room code, a plaza match, or a rematch on
+ * the live room held in battleSession. */
 export type BattleTarget =
   | { kind: "code"; code: string }
-  | { kind: "reservation"; reservation: unknown };
+  | { kind: "reservation"; reservation: unknown }
+  | { kind: "session" };
 
 export interface OnlineThrowOptions {
   /** Launch point (where the flick released). Defaults to the rest spot. */
@@ -113,7 +115,14 @@ export function useOnlineBattle(
     const connect = async () => {
       try {
         const client = new Client(GAME_SERVER_URL);
-        if (target.kind === "reservation") {
+        if (target.kind === "session") {
+          // Rematch: take back the live room the reveal flow was holding.
+          // Stale listeners from the previous round may still fire; they
+          // only duplicate navigation calls with equivalent targets.
+          room = battleSession.room;
+          battleSession.room = null;
+          if (!room) throw new Error("The rematch session expired.");
+        } else if (target.kind === "reservation") {
           // Plaza match: the reservation already carries our identity.
           room = (await client.consumeSeatReservation(
             target.reservation as never,

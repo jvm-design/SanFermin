@@ -10,11 +10,14 @@ import {
 } from "@tomatina/shared";
 import {
   BattlePhase,
+  BeaconInfo,
   MSG_ACCEPT_REVEAL,
   MSG_BLOCK,
   MSG_PASS,
   MSG_PASSED,
   MSG_PROPOSE_REVEAL,
+  MSG_REMATCH,
+  MSG_REMATCH_REQUESTED,
   MSG_REPORT,
   MSG_REVEAL_PROPOSED,
   MSG_REVEALED,
@@ -34,6 +37,16 @@ import { supabase } from "../supabase";
 
 /** Keep an ended room alive for the post-battle reveal negotiation. */
 const DISPOSE_AFTER_END_MS = 180_000;
+
+const BEACON_EMOJIS = ["🍍", "🦊", "🌵", "🎲", "🪩", "🛸", "🐙", "🌈", "⚡️", "🍩", "🎈", "🐳"];
+const BEACON_COLORS = ["#7c3aed", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777", "#0f766e", "#dc2626", "#4f46e5"];
+
+function makeBeacon(): BeaconInfo {
+  return {
+    emoji: BEACON_EMOJIS[Math.floor(Math.random() * BEACON_EMOJIS.length)]!,
+    color: BEACON_COLORS[Math.floor(Math.random() * BEACON_COLORS.length)]!,
+  };
+}
 
 export class PlayerState extends Schema {
   @type("number") splat = 0;
@@ -90,6 +103,9 @@ export class BattleRoom extends Room<BattleRoomState> {
     });
     this.onMessage(MSG_PASS, (client) => {
       this.handlePass(client);
+    });
+    this.onMessage(MSG_REMATCH, (client) => {
+      this.handleRematch(client);
     });
   }
 
@@ -251,6 +267,46 @@ export class BattleRoom extends Room<BattleRoomState> {
   private winnerSessionId: string | null = null;
   private revealProposed = false;
   private revealConcluded = false;
+  private rematchVotes = new Set<string>();
+  private disposeTimer: ReturnType<Room["clock"]["setTimeout"]> | null = null;
+
+  /** Symmetric rematch: when both players ask, the room resets in place. */
+  private handleRematch(client: Client) {
+    if (this.state.phase !== "ended") return;
+    if (this.clients.length !== BATTLE_MAX_PLAYERS) return; // opponent gone
+    if (this.rematchVotes.has(client.sessionId)) return;
+    this.rematchVotes.add(client.sessionId);
+    if (this.rematchVotes.size < BATTLE_MAX_PLAYERS) {
+      const other = this.opponentOf(client.sessionId);
+      this.clients.find((c) => c.sessionId === other)?.send(MSG_REMATCH_REQUESTED);
+      return;
+    }
+    this.restartRound();
+  }
+
+  private restartRound() {
+    this.disposeTimer?.clear();
+    this.disposeTimer = null;
+    this.rematchVotes.clear();
+    this.winnerSessionId = null;
+    this.revealProposed = false;
+    this.revealConcluded = false;
+    this.lastThrowAt.clear();
+    this.state.players.forEach((p) => {
+      p.splat = 0;
+    });
+    this.startedAt = Date.now();
+    logEvent("battle_started", {
+      roomId: this.roomId,
+      sessionIds: [...this.state.players.keys()],
+      userIds: this.knownUserIds(),
+      props: { ...this.meta, rematch: true },
+    });
+    this.state.phase = "countdown";
+    this.clock.setTimeout(() => {
+      if (this.state.phase === "countdown") this.state.phase = "active";
+    }, COUNTDOWN_MS);
+  }
 
   private handleProposeReveal(client: Client) {
     if (this.state.phase !== "ended" || this.revealConcluded) return;
@@ -303,12 +359,17 @@ export class BattleRoom extends Room<BattleRoomState> {
 
     const winnerClient = this.clients.find((c) => c.sessionId === winnerSid);
     const loserClient = this.clients.find((c) => c.sessionId === loserSid);
+    // ONE beacon for the pair: both phones display the same emoji+color
+    // so the players can physically find each other.
+    const beacon = makeBeacon();
     winnerClient?.send(MSG_REVEALED, {
       opponentName: loserIdentity,
+      beacon,
       chat: chat?.a ?? null,
     } satisfies RevealedInfo);
     loserClient?.send(MSG_REVEALED, {
       opponentName: winnerIdentity,
+      beacon,
       chat: chat?.b ?? null,
     } satisfies RevealedInfo);
   }
@@ -361,7 +422,10 @@ export class BattleRoom extends Room<BattleRoomState> {
     const event: RoundEndEvent = { reason, coveredSessionId };
     this.broadcast(MSG_ROUND_END, event);
 
-    this.clock.setTimeout(() => this.disconnect(), DISPOSE_AFTER_END_MS);
+    this.disposeTimer = this.clock.setTimeout(
+      () => this.disconnect(),
+      DISPOSE_AFTER_END_MS,
+    );
   }
 }
 

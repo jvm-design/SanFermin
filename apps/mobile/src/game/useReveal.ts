@@ -4,6 +4,8 @@ import {
   MSG_PASS,
   MSG_PASSED,
   MSG_PROPOSE_REVEAL,
+  MSG_REMATCH,
+  MSG_REMATCH_REQUESTED,
   MSG_REVEAL_PROPOSED,
   MSG_REVEALED,
   RevealedInfo,
@@ -17,6 +19,10 @@ export interface UseRevealCallbacks {
   onProposed: () => void;
   /** The opponent passed kindly. */
   onPassedByOpponent: () => void;
+  /** The opponent wants a rematch. */
+  onRematchRequested: () => void;
+  /** Both said rematch: the room reset — jump back into battle. */
+  onRematchStarted: () => void;
   /** Connection gone (opponent left, room expired). */
   onClosed: () => void;
 }
@@ -27,6 +33,7 @@ export interface UseRevealResult {
   propose: () => void;
   accept: () => void;
   pass: () => void;
+  requestRematch: () => void;
   /** Leave the post-battle session (rematch, go home...). */
   release: () => void;
 }
@@ -57,6 +64,14 @@ export function useReveal(callbacks: UseRevealCallbacks): UseRevealResult {
       releaseBattleSession();
       cbRef.current.onPassedByOpponent();
     });
+    room.onMessage(MSG_REMATCH_REQUESTED, () => cbRef.current.onRematchRequested());
+    room.onStateChange((state) => {
+      // The server reset the room: both players agreed to a rematch.
+      if (!concluded && state.phase === "countdown") {
+        concluded = true;
+        cbRef.current.onRematchStarted();
+      }
+    });
     room.onLeave(() => {
       if (!concluded && battleSession.room === room) {
         battleSession.room = null;
@@ -76,7 +91,10 @@ export function useReveal(callbacks: UseRevealCallbacks): UseRevealResult {
     // The canned message is delivered by the server; we can leave now.
     releaseBattleSession();
   }, []);
+  const requestRematch = useCallback(() => {
+    battleSession.room?.send(MSG_REMATCH);
+  }, []);
   const release = useCallback(() => releaseBattleSession(), []);
 
-  return { live, propose, accept, pass, release };
+  return { live, propose, accept, pass, requestRematch, release };
 }
