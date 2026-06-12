@@ -17,6 +17,7 @@ import {
 } from "@tomatina/protocol";
 import { GAME_SERVER_URL } from "../config";
 import { supabase } from "../lib/supabase";
+import { battleSession } from "./battleSession";
 import { makeOpponentSplat, makeScreenSplat } from "./splats";
 import { BattleLayout, BattleViewState, RoundOutcome } from "./types";
 
@@ -184,6 +185,12 @@ export function useOnlineBattle(
               : e.coveredSessionId === room!.sessionId
                 ? "covered"
                 : "coveredThem";
+          if (e.reason === "covered") {
+            // Hand the live connection to the reveal flow; unmounting this
+            // screen must NOT close it (the negotiation happens in-room).
+            battleSession.room = room;
+            roomRef.current = null;
+          }
           if (e.reason === "covered") {
             Haptics.notificationAsync(
               outcome === "coveredThem"

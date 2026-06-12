@@ -76,3 +76,39 @@ export interface RoundEndEvent {
   /** Session id of the covered player. Null when reason is "playerLeft". */
   coveredSessionId: string | null;
 }
+
+// ---- post-battle: reveal consent (decision 0003) ----
+// The winner holds the initiative; reveal happens only on MUTUAL consent
+// (invariant 3). All identity exchange is server-mediated: clients never
+// learn anything about the opponent unless the server says so.
+
+/** Winner -> server: propose to reveal identities and chat. */
+export const MSG_PROPOSE_REVEAL = "proposeReveal" as const;
+
+/** Loser -> server: accept the winner's proposal. */
+export const MSG_ACCEPT_REVEAL = "acceptReveal" as const;
+
+/** Either side -> server: decline kindly ("just here to play"). */
+export const MSG_PASS = "pass" as const;
+
+/** Server -> loser: the winner proposed to reveal. */
+export const MSG_REVEAL_PROPOSED = "revealProposed" as const;
+
+/** Server -> the other player: opponent passed kindly. */
+export const MSG_PASSED = "passed" as const;
+
+/** Server -> both: mutual consent reached; identities unlocked. */
+export const MSG_REVEALED = "revealed" as const;
+
+export interface ChatCredentials {
+  apiKey: string;
+  token: string;
+  channelId: string;
+  userId: string;
+}
+
+export interface RevealedInfo {
+  opponentName: string;
+  /** Null when the chat service is not configured: client falls back. */
+  chat: ChatCredentials | null;
+}

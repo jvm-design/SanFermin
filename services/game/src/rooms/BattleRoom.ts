@@ -10,22 +10,30 @@ import {
 } from "@tomatina/shared";
 import {
   BattlePhase,
+  MSG_ACCEPT_REVEAL,
   MSG_BLOCK,
+  MSG_PASS,
+  MSG_PASSED,
+  MSG_PROPOSE_REVEAL,
   MSG_REPORT,
+  MSG_REVEAL_PROPOSED,
+  MSG_REVEALED,
   MSG_ROUND_END,
   MSG_THROW,
   MSG_THROWN,
   REPORT_REASONS,
   ReportReason,
+  RevealedInfo,
   RoundEndEvent,
   RoundEndReason,
   ThrownEvent,
 } from "@tomatina/protocol";
+import { createBattleChat } from "../chat";
 import { logEvent } from "../events";
 import { supabase } from "../supabase";
 
-/** Keep an ended room around briefly so clients can read the result. */
-const DISPOSE_AFTER_END_MS = 30_000;
+/** Keep an ended room alive for the post-battle reveal negotiation. */
+const DISPOSE_AFTER_END_MS = 180_000;
 
 export class PlayerState extends Schema {
   @type("number") splat = 0;
@@ -73,6 +81,15 @@ export class BattleRoom extends Room<BattleRoomState> {
     });
     this.onMessage(MSG_REPORT, (client, raw: unknown) => {
       void this.handleReport(client, raw);
+    });
+    this.onMessage(MSG_PROPOSE_REVEAL, (client) => {
+      this.handleProposeReveal(client);
+    });
+    this.onMessage(MSG_ACCEPT_REVEAL, (client) => {
+      void this.handleAcceptReveal(client);
+    });
+    this.onMessage(MSG_PASS, (client) => {
+      this.handlePass(client);
     });
   }
 
@@ -229,9 +246,107 @@ export class BattleRoom extends Room<BattleRoomState> {
     return undefined;
   }
 
+  // ---- post-battle reveal (decision 0003) ----
+  /** Session id of the round winner; reveal initiative belongs to them. */
+  private winnerSessionId: string | null = null;
+  private revealProposed = false;
+  private revealConcluded = false;
+
+  private handleProposeReveal(client: Client) {
+    if (this.state.phase !== "ended" || this.revealConcluded) return;
+    if (client.sessionId !== this.winnerSessionId) return; // winner only
+    if (this.revealProposed) return;
+    this.revealProposed = true;
+    logEvent("reveal_proposed", {
+      roomId: this.roomId,
+      userIds: this.knownUserIds(),
+    });
+    const loser = this.opponentOf(client.sessionId);
+    const loserClient = this.clients.find((c) => c.sessionId === loser);
+    loserClient?.send(MSG_REVEAL_PROPOSED);
+  }
+
+  private async handleAcceptReveal(client: Client) {
+    if (this.state.phase !== "ended" || this.revealConcluded) return;
+    // Only the loser accepts, and only after a real proposal (mutual consent).
+    if (!this.revealProposed || client.sessionId === this.winnerSessionId) return;
+    this.revealConcluded = true;
+
+    logEvent("mutual_chat_opt_in", {
+      roomId: this.roomId,
+      sessionIds: [...this.state.players.keys()],
+      userIds: this.knownUserIds(),
+    });
+
+    const winnerSid = this.winnerSessionId!;
+    const loserSid = client.sessionId;
+    const [winnerIdentity, loserIdentity] = await Promise.all([
+      this.identityOf(winnerSid),
+      this.identityOf(loserSid),
+    ]);
+
+    // Chat only exists when both players are real accounts.
+    let chat: Awaited<ReturnType<typeof createBattleChat>> = null;
+    const winnerUserId = this.userIds.get(winnerSid);
+    const loserUserId = this.userIds.get(loserSid);
+    if (winnerUserId && loserUserId) {
+      try {
+        chat = await createBattleChat(
+          this.roomId,
+          { userId: winnerUserId, name: winnerIdentity },
+          { userId: loserUserId, name: loserIdentity },
+        );
+      } catch (err) {
+        console.error(`chat creation failed: ${(err as Error).message}`);
+      }
+    }
+
+    const winnerClient = this.clients.find((c) => c.sessionId === winnerSid);
+    const loserClient = this.clients.find((c) => c.sessionId === loserSid);
+    winnerClient?.send(MSG_REVEALED, {
+      opponentName: loserIdentity,
+      chat: chat?.a ?? null,
+    } satisfies RevealedInfo);
+    loserClient?.send(MSG_REVEALED, {
+      opponentName: winnerIdentity,
+      chat: chat?.b ?? null,
+    } satisfies RevealedInfo);
+  }
+
+  private handlePass(client: Client) {
+    if (this.state.phase !== "ended" || this.revealConcluded) return;
+    this.revealConcluded = true;
+    logEvent("reveal_passed", {
+      roomId: this.roomId,
+      userIds: this.knownUserIds(),
+    });
+    const other = this.opponentOf(client.sessionId);
+    const otherClient = this.clients.find((c) => c.sessionId === other);
+    otherClient?.send(MSG_PASSED);
+  }
+
+  /** Display identity: profile name, or a friendly anonymous fallback. */
+  private async identityOf(sessionId: string): Promise<string> {
+    const userId = this.userIds.get(sessionId);
+    if (supabase && userId) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_seed")
+        .eq("id", userId)
+        .single();
+      if (data?.display_name) return data.display_name;
+      if (data?.avatar_seed) return `Tomato ${data.avatar_seed.slice(0, 4)}`;
+    }
+    return `Tomato ${sessionId.slice(0, 4)}`;
+  }
+
   private endRound(reason: RoundEndReason, coveredSessionId: string | null) {
     if (this.state.phase === "ended") return;
     this.state.phase = "ended";
+    this.winnerSessionId =
+      reason === "covered" && coveredSessionId
+        ? (this.opponentOf(coveredSessionId) ?? null)
+        : null;
 
     logEvent(reason === "covered" ? "battle_completed" : "battle_abandoned", {
       roomId: this.roomId,

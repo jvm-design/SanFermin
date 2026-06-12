@@ -8,6 +8,7 @@ import { JoinScreen } from "./src/screens/JoinScreen";
 import { OnlineBattleScreen } from "./src/screens/OnlineBattleScreen";
 import { PlazaScreen } from "./src/screens/PlazaScreen";
 import { BattleTarget } from "./src/game/useOnlineBattle";
+import { ChatCredentials } from "@tomatina/protocol";
 import { CoveredScreen } from "./src/screens/CoveredScreen";
 import { RevealConsentScreen } from "./src/screens/RevealConsentScreen";
 import { FriendlyPassScreen } from "./src/screens/FriendlyPassScreen";
@@ -29,8 +30,8 @@ type Screen =
   | { name: "online"; target: BattleTarget }
   | { name: "covered"; outcome: RoundOutcome; origin: Origin }
   | { name: "reveal"; won: boolean; origin: Origin }
-  | { name: "pass" }
-  | { name: "chat" };
+  | { name: "pass"; variant: "sent" | "received" }
+  | { name: "chat"; title: string; chat: ChatCredentials | null };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
@@ -137,16 +138,27 @@ export default function App() {
       {screen.name === "reveal" && (
         <RevealConsentScreen
           role={screen.won ? "winner" : "loser"}
-          onReveal={() => setScreen({ name: "chat" })}
+          onRevealed={(info) =>
+            setScreen({ name: "chat", title: info.opponentName, chat: info.chat })
+          }
           onRematch={() => rematch(screen.origin)}
-          onPass={() => setScreen({ name: "pass" })}
+          onPassSent={() => setScreen({ name: "pass", variant: "sent" })}
+          onPassReceived={() => setScreen({ name: "pass", variant: "received" })}
+          onClosed={() => setScreen({ name: "home" })}
         />
       )}
       {screen.name === "pass" && (
-        <FriendlyPassScreen onDone={() => setScreen({ name: "home" })} />
+        <FriendlyPassScreen
+          variant={screen.variant}
+          onDone={() => setScreen({ name: "home" })}
+        />
       )}
       {screen.name === "chat" && (
-        <ChatScreen onClose={() => setScreen({ name: "home" })} />
+        <ChatScreen
+          title={screen.title}
+          chat={screen.chat}
+          onClose={() => setScreen({ name: "home" })}
+        />
       )}
     </>
   );

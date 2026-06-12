@@ -2,24 +2,33 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../theme";
 
+const CANNED_MESSAGE =
+  '"GG! That was really fun — no chat for me this time, I\'d rather just ' +
+  'play. Throw another tomato at me sometime 🍅"';
+
+interface Props {
+  /** sent = you declined kindly; received = they did. */
+  variant: "sent" | "received";
+  onDone: () => void;
+}
+
 /**
- * Confirmation after declining the reveal kindly. The decline is a canned,
- * anonymous, one-shot message — never free text (Phase 2 will enforce this
- * server-side). Softening the "no" is core to the social loop.
+ * The kind decline. A canned, anonymous, one-shot message — never free
+ * text. Softening the "no" is core to the social loop.
  */
-export function FriendlyPassScreen({ onDone }: { onDone: () => void }) {
+export function FriendlyPassScreen({ variant, onDone }: Props) {
+  const sent = variant === "sent";
   return (
     <View style={styles.container}>
       <Text style={styles.emoji}>💌</Text>
-      <Text style={styles.title}>Message sent</Text>
+      <Text style={styles.title}>{sent ? "Message sent" : "They say…"}</Text>
       <View style={styles.bubble}>
-        <Text style={styles.bubbleText}>
-          "GG! That was really fun — no chat for me this time, I'd rather just
-          play. Throw another tomato at me sometime 🍅"
-        </Text>
+        <Text style={styles.bubbleText}>{CANNED_MESSAGE}</Text>
       </View>
       <Text style={styles.subtitle}>
-        You both stay anonymous. No hard feelings, only tomatoes.
+        {sent
+          ? "You both stay anonymous. No hard feelings, only tomatoes."
+          : "No reveal this time — you both stay anonymous. No hard feelings, only tomatoes."}
       </Text>
       <Pressable style={styles.button} onPress={onDone}>
         <Text style={styles.buttonText}>Back to the plaza</Text>

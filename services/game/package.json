@@ -15,7 +15,8 @@
     "@colyseus/ws-transport": "~0.16.5",
     "@supabase/supabase-js": "^2.108.1",
     "@tomatina/protocol": "workspace:*",
-    "@tomatina/shared": "workspace:*"
+    "@tomatina/shared": "workspace:*",
+    "stream-chat": "^9.45.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

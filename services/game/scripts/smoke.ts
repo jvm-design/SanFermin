@@ -8,12 +8,17 @@ import { COVER_THRESHOLD, SPLAT_PER_HIT, THROW_COOLDOWN_MS } from "@tomatina/sha
 import {
   BattleStateView,
   MatchedInfo,
+  MSG_ACCEPT_REVEAL,
   MSG_MATCHED,
   MSG_NEARBY,
   MSG_POSITION,
+  MSG_PROPOSE_REVEAL,
+  MSG_REVEAL_PROPOSED,
+  MSG_REVEALED,
   MSG_ROUND_END,
   MSG_THROW,
   PositionUpdate,
+  RevealedInfo,
   RoundEndEvent,
   ThrowEvent,
 } from "@tomatina/protocol";
@@ -97,6 +102,36 @@ async function testCoveredRound() {
   assert(a.state.phase === "ended", "phase should be ended");
 
   console.log("ok: covered round — consistent splat state and round end on both clients");
+
+  // Post-battle reveal: A won (B got covered). Winner proposes, loser
+  // accepts, both get the mutual reveal with the opponent's identity.
+  let proposedSeenByB = false;
+  let revealedA: RevealedInfo | undefined;
+  let revealedB: RevealedInfo | undefined;
+  b.onMessage(MSG_REVEAL_PROPOSED, () => {
+    proposedSeenByB = true;
+    b.send(MSG_ACCEPT_REVEAL);
+  });
+  a.onMessage(MSG_REVEALED, (info: RevealedInfo) => (revealedA = info));
+  b.onMessage(MSG_REVEALED, (info: RevealedInfo) => (revealedB = info));
+
+  b.send(MSG_PROPOSE_REVEAL); // loser tries to cheat the initiative...
+  await sleep(300);
+  assert(!proposedSeenByB, "a proposal from the loser must be ignored");
+
+  a.send(MSG_PROPOSE_REVEAL); // the winner proposes for real
+  await waitFor(() => !!revealedA && !!revealedB, "mutual reveal on both clients");
+  assert(proposedSeenByB, "loser must receive the winner's proposal");
+  assert(
+    typeof revealedA!.opponentName === "string" && revealedA!.opponentName.length > 0,
+    "winner learns the loser's identity",
+  );
+  assert(
+    typeof revealedB!.opponentName === "string" && revealedB!.opponentName.length > 0,
+    "loser learns the winner's identity",
+  );
+
+  console.log("ok: reveal — winner initiative enforced, mutual consent unlocked identities");
   await a.leave();
   await b.leave();
 }

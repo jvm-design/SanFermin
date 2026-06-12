@@ -42,6 +42,13 @@ network, including 4G/5G.
 GAME_SERVER_URL=wss://<your-domain>.up.railway.app pnpm --filter @tomatina/game-server bot SPLAT
 ```
 
+## Optional service variables (Railway → Variables)
+
+| Variable | Purpose |
+|---|---|
+| `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | accounts, blocks/reports, kill-gate events |
+| `STREAM_API_KEY` + `STREAM_API_SECRET` | hosted chat after mutual reveal (getstream.io → create app → copy key & secret). Without them, reveal works and the chat falls back to local-only |
+
 ## Notes
 
 - TLS (wss://) is handled by Railway's edge — nothing to configure.
