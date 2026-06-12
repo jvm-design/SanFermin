@@ -1,12 +1,15 @@
 import http from "node:http";
 import { Server } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
+import { mediaRequestHandler } from "./http";
 import { BattleRoom } from "./rooms/BattleRoom";
 import { PlazaRoom } from "./rooms/PlazaRoom";
 
 export function createGameServer(): Server {
   const server = new Server({
-    transport: new WebSocketTransport({ server: http.createServer() }),
+    transport: new WebSocketTransport({
+      server: http.createServer(mediaRequestHandler),
+    }),
   });
 
   // Manual room-code join (Phase 1 path, kept for dev/testing): both

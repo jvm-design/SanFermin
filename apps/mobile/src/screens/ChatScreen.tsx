@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,14 +11,19 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Channel, StreamChat } from "stream-chat";
 import { ChatCredentials } from "@tomatina/protocol";
+import { GAME_SERVER_HTTP_URL } from "../config";
+import { supabase } from "../lib/supabase";
 import { colors } from "../theme";
 
 interface Message {
   id: string;
   text: string;
   mine: boolean;
+  /** Moderated image, delivered pull-based: shown only after a tap. */
+  imageUrl?: string;
 }
 
 interface Props {
@@ -37,8 +44,20 @@ export function ChatScreen({ title, chat, onClose }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [mediaEnabled, setMediaEnabled] = useState(false);
+  const [sendingImage, setSendingImage] = useState(false);
+  /** Which image messages the user chose to view (pull-based display). */
+  const [opened, setOpened] = useState<Set<string>>(new Set());
   const channelRef = useRef<Channel | null>(null);
   const localId = useRef(0);
+
+  useEffect(() => {
+    if (!chat) return;
+    fetch(`${GAME_SERVER_HTTP_URL}/media/status`)
+      .then((r) => r.json())
+      .then((s: { enabled?: boolean }) => setMediaEnabled(!!s.enabled))
+      .catch(() => {});
+  }, [chat]);
 
   useEffect(() => {
     if (!chat) return;
@@ -51,20 +70,23 @@ export function ChatScreen({ title, chat, onClose }: Props) {
       await channel.watch();
       if (cancelled) return;
       channelRef.current = channel;
-      setMessages(
-        channel.state.messages.map((m) => ({
-          id: m.id,
-          text: m.text ?? "",
-          mine: m.user?.id === chat.userId,
-        })),
-      );
+      const toMessage = (m: {
+        id: string;
+        text?: string;
+        user?: { id?: string } | null;
+        attachments?: { type?: string; image_url?: string }[];
+      }): Message => ({
+        id: m.id,
+        text: m.text ?? "",
+        mine: m.user?.id === chat.userId,
+        imageUrl: m.attachments?.find((a) => a.type === "image")?.image_url,
+      });
+      setMessages(channel.state.messages.map(toMessage));
       channel.on("message.new", (event) => {
         const m = event.message;
         if (!m) return;
         setMessages((prev) =>
-          prev.some((x) => x.id === m.id)
-            ? prev
-            : [...prev, { id: m.id, text: m.text ?? "", mine: m.user?.id === chat.userId }],
+          prev.some((x) => x.id === m.id) ? prev : [...prev, toMessage(m)],
         );
       });
     };
@@ -90,6 +112,58 @@ export function ChatScreen({ title, chat, onClose }: Props) {
     } else {
       localId.current += 1;
       setMessages((m) => [...m, { id: `local-${localId.current}`, text, mine: true }]);
+    }
+  };
+
+  const sendImage = async () => {
+    if (!chat || !supabase || sendingImage) return;
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.7,
+      allowsEditing: false,
+    });
+    const asset = picked.assets?.[0];
+    if (picked.canceled || !asset) return;
+
+    setSendingImage(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = userData.user?.id;
+      const accessToken = sessionData.session?.access_token;
+      if (!userId || !accessToken) throw new Error("Sign in again.");
+
+      // 1. quarantine upload (the only storage write the account may do)
+      const path = `quarantine/${userId}/${Date.now()}.jpg`;
+      const fileResp = await fetch(asset.uri);
+      const fileBytes = await fileResp.arrayBuffer();
+      const upload = await supabase.storage
+        .from("chat-media")
+        .upload(path, fileBytes, { contentType: "image/jpeg" });
+      if (upload.error) throw new Error(upload.error.message);
+
+      // 2. server: moderate, then deliver only if clean
+      const resp = await fetch(`${GAME_SERVER_HTTP_URL}/media/moderate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ path, channelId: chat.channelId }),
+      });
+      const result = (await resp.json()) as { allowed?: boolean; error?: string };
+      if (!resp.ok) throw new Error(result.error ?? "upload failed");
+      if (!result.allowed) {
+        Alert.alert(
+          "Image not sent",
+          "Automatic moderation rejected this image. Only friendly content gets through 🍅",
+        );
+      }
+      // delivery happens via the Stream event — nothing to append locally
+    } catch (err) {
+      Alert.alert("Image not sent", err instanceof Error ? err.message : "Try again.");
+    } finally {
+      setSendingImage(false);
     }
   };
 
@@ -126,15 +200,35 @@ export function ChatScreen({ title, chat, onClose }: Props) {
           keyExtractor={(m) => m.id}
           renderItem={({ item }) => (
             <View style={[styles.bubble, item.mine ? styles.mine : styles.theirs]}>
-              <Text style={item.mine ? styles.mineText : styles.theirsText}>
-                {item.text}
-              </Text>
+              {item.imageUrl ? (
+                // pull-based media (invariant 5): never shown until tapped
+                opened.has(item.id) ? (
+                  <Image source={{ uri: item.imageUrl }} style={styles.image} />
+                ) : (
+                  <Pressable
+                    onPress={() => setOpened((s) => new Set(s).add(item.id))}
+                  >
+                    <Text style={item.mine ? styles.mineText : styles.theirsText}>
+                      📷 Image — tap to view
+                    </Text>
+                  </Pressable>
+                )
+              ) : (
+                <Text style={item.mine ? styles.mineText : styles.theirsText}>
+                  {item.text}
+                </Text>
+              )}
             </View>
           )}
         />
       )}
 
       <View style={styles.inputRow}>
+        {chat && mediaEnabled && (
+          <Pressable style={styles.media} onPress={sendImage} disabled={sendingImage}>
+            <Text style={styles.mediaText}>{sendingImage ? "⏳" : "📷"}</Text>
+          </Pressable>
+        )}
         <TextInput
           style={styles.input}
           value={draft}
@@ -196,6 +290,9 @@ const styles = StyleSheet.create({
   },
   mineText: { color: colors.white, fontSize: 15 },
   theirsText: { color: colors.text, fontSize: 15 },
+  image: { width: 200, height: 200, borderRadius: 10 },
+  media: { justifyContent: "center", paddingHorizontal: 4 },
+  mediaText: { fontSize: 22 },
   inputRow: {
     flexDirection: "row",
     gap: 10,

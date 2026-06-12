@@ -10,6 +10,7 @@
     "bot": "tsx scripts/bot.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.1067.0",
     "@colyseus/core": "~0.16.24",
     "@colyseus/schema": "^3.0.0",
     "@colyseus/ws-transport": "~0.16.5",

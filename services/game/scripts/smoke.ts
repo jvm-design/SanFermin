@@ -206,6 +206,29 @@ async function testPlazaProximityMatching() {
   await plazaB.leave();
 }
 
+async function testMediaEndpoints() {
+  const base = `http://127.0.0.1:${PORT}`;
+  const status = (await (await fetch(`${base}/media/status`)).json()) as {
+    enabled: boolean;
+  };
+  assert(status.enabled === false, "media must be disabled without moderation env");
+
+  const moderate = await fetch(`${base}/media/moderate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path: "x", channelId: "y" }),
+  });
+  assert(
+    moderate.status === 503,
+    `unmoderated media must be refused (got ${moderate.status})`,
+  );
+
+  const root = await fetch(base);
+  assert(root.status === 200, "root should answer (deploy health checks)");
+
+  console.log("ok: media — disabled and refusing uploads until moderation is configured");
+}
+
 async function main() {
   const server = createGameServer();
   await server.listen(PORT);
@@ -213,6 +236,7 @@ async function main() {
   await testCoveredRound();
   await testDisconnectEndsCleanly();
   await testPlazaProximityMatching();
+  await testMediaEndpoints();
 
   console.log("smoke test passed");
   process.exit(0);

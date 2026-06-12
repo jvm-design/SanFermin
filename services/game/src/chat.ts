@@ -45,3 +45,28 @@ export async function createBattleChat(
     b: { apiKey, token: stream.createToken(b.userId), channelId, userId: b.userId },
   };
 }
+
+export const chatConfigured = stream !== null;
+
+/**
+ * Posts a moderated image into a channel ON BEHALF of the sender, after
+ * verifying they are a member. Media reaches Stream only through this
+ * path — i.e. only after moderation approved it.
+ */
+export async function sendImageMessage(
+  channelId: string,
+  userId: string,
+  imageUrl: string,
+): Promise<void> {
+  if (!stream) throw new Error("chat_unconfigured");
+  const channel = stream.channel("messaging", channelId);
+  const { members } = await channel.queryMembers({ id: userId });
+  if (!members.some((m) => m.user_id === userId)) {
+    throw new Error("not_a_member");
+  }
+  await channel.sendMessage({
+    text: "",
+    attachments: [{ type: "image", image_url: imageUrl }],
+    user_id: userId,
+  });
+}

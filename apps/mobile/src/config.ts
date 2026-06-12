@@ -5,3 +5,6 @@
  */
 export const GAME_SERVER_URL =
   process.env.EXPO_PUBLIC_GAME_SERVER_URL ?? "ws://localhost:2567";
+
+/** Same server, HTTP side (media moderation endpoints). */
+export const GAME_SERVER_HTTP_URL = GAME_SERVER_URL.replace(/^ws/, "http");
