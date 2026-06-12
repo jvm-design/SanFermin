@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import * as Haptics from "expo-haptics";
 import { COUNTDOWN_MS, COVER_THRESHOLD, SPLAT_PER_HIT } from "@tomatina/shared";
 import { makeOpponentSplat, makeScreenSplat } from "./splats";
+import { sfx } from "./sfx";
 import {
   BattleLayout,
   BattlePhase,
@@ -60,6 +61,7 @@ export function useBattle(
     projectiles: [],
     screenSplats: [],
     opponentSplats: [],
+    lastHitAt: 0,
   });
   const countdownEndsAtRef = useRef(Date.now() + COUNTDOWN_MS);
   const nowRef = useRef(Date.now());
@@ -74,6 +76,7 @@ export function useBattle(
     const s = stateRef.current;
     if (s.phase === "ended") return;
     s.phase = "ended";
+    sfx.covered();
     Haptics.notificationAsync(
       outcome === "coveredThem"
         ? Haptics.NotificationFeedbackType.Success
@@ -93,11 +96,14 @@ export function useBattle(
           ...s.opponentSplats,
           makeOpponentSplat(p.to, layout.opponentRadius),
         ];
+        sfx.splat();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         if (s.opponentSplat >= COVER_THRESHOLD) endRound("coveredThem");
       } else {
         s.playerSplat = Math.min(COVER_THRESHOLD, s.playerSplat + SPLAT_PER_HIT);
         s.screenSplats = [...s.screenSplats, makeScreenSplat(p.to, layout.width)];
+        s.lastHitAt = Date.now();
+        sfx.splat();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
         if (s.playerSplat >= COVER_THRESHOLD) endRound("covered");
       }
@@ -115,6 +121,7 @@ export function useBattle(
       nowRef.current = now;
       if (s.phase === "countdown" && now >= countdownEndsAtRef.current) {
         s.phase = "active";
+        sfx.go();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       }
       const landed = s.projectiles.filter((p) => now - p.startedAt >= p.durationMs);
@@ -189,6 +196,7 @@ export function useBattle(
         durationMs: OUTGOING_FLIGHT_MS,
       },
     ];
+    sfx.throw();
     Haptics.selectionAsync().catch(() => {});
   }, []);
 

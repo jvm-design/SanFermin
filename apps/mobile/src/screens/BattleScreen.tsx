@@ -1,12 +1,16 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { COVER_THRESHOLD, SPLAT_PER_HIT } from "@tomatina/shared";
 import { RoundOutcome } from "../game/types";
 import { useBattle } from "../game/useBattle";
 import { ThrowRelease, useThrowGesture } from "../game/useThrowGesture";
 import { BattleCanvas } from "../components/BattleCanvas";
+import { CameraBackdrop } from "../components/CameraBackdrop";
 import { SplatMeter } from "../components/SplatMeter";
 import { BUILD_TAG } from "../buildTag";
 import { colors } from "../theme";
+
+const MATCH_POINT = COVER_THRESHOLD - SPLAT_PER_HIT;
 
 interface Props {
   onRoundEnd: (outcome: RoundOutcome) => void;
@@ -28,9 +32,15 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
     [throwTomato],
   );
   const { panHandlers, dragRef } = useThrowGesture(restPos, handleThrow);
+  const [cameraOn, setCameraOn] = useState(false);
+  const matchPoint =
+    battle.phase === "active" &&
+    (battle.view.playerSplat >= MATCH_POINT ||
+      battle.view.opponentSplat >= MATCH_POINT);
 
   return (
     <View style={styles.container}>
+      <CameraBackdrop enabled={cameraOn} />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BattleCanvas
           view={battle.view}
@@ -51,6 +61,20 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
       <Pressable style={styles.leave} onPress={onLeave} hitSlop={12}>
         <Text style={styles.leaveText}>✕ Leave</Text>
       </Pressable>
+
+      <Pressable
+        style={styles.cameraToggle}
+        onPress={() => setCameraOn((v) => !v)}
+        hitSlop={12}
+      >
+        <Text style={styles.cameraToggleText}>{cameraOn ? "🎥" : "📷"}</Text>
+      </Pressable>
+
+      {matchPoint && (
+        <Text style={styles.matchPoint} pointerEvents="none">
+          MATCH POINT 🍅
+        </Text>
+      )}
 
       {battle.phase === "countdown" && (
         <View style={styles.countdown} pointerEvents="none">
@@ -93,6 +117,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   leaveText: { color: colors.textDim, fontSize: 14, fontWeight: "600" },
+  cameraToggle: {
+    position: "absolute",
+    top: 18,
+    right: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  cameraToggleText: { fontSize: 18 },
+  matchPoint: {
+    position: "absolute",
+    top: 110,
+    alignSelf: "center",
+    color: colors.tomato,
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 2,
+    textShadowColor: "#000",
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 1 },
+  },
   countdown: {
     position: "absolute",
     top: 0,

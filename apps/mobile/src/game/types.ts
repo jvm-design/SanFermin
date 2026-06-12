@@ -29,6 +29,8 @@ export interface Splat {
   /** Vertical drip lengths hanging from the splat, 0-2 entries. */
   drips: { dx: number; length: number; width: number }[];
   color: string;
+  /** Epoch ms — drives the squash-in impact animation. */
+  createdAt: number;
 }
 
 export type RoundOutcome = "covered" | "coveredThem" | "opponentLeft";
@@ -42,6 +44,8 @@ export interface BattleViewState {
   projectiles: Projectile[];
   screenSplats: Splat[];
   opponentSplats: Splat[];
+  /** Epoch ms of the last hit WE took — drives the screen shake. */
+  lastHitAt: number;
 }
 
 export interface BattleLayout {

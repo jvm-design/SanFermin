@@ -19,6 +19,7 @@ import { GAME_SERVER_URL } from "../config";
 import { supabase } from "../lib/supabase";
 import { battleSession } from "./battleSession";
 import { makeOpponentSplat, makeScreenSplat } from "./splats";
+import { sfx } from "./sfx";
 import { BattleLayout, BattleViewState, RoundOutcome } from "./types";
 
 const OUTGOING_FLIGHT_MS = 420;
@@ -90,6 +91,7 @@ export function useOnlineBattle(
     projectiles: [],
     screenSplats: [],
     opponentSplats: [],
+    lastHitAt: 0,
   });
   const statusRef = useRef<OnlineStatus>("connecting");
   const countdownEndsAtRef = useRef(0);
@@ -154,6 +156,7 @@ export function useOnlineBattle(
             state.phase === "active"
           ) {
             statusRef.current = "active";
+            sfx.go();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           }
         });
@@ -192,6 +195,7 @@ export function useOnlineBattle(
             roomRef.current = null;
           }
           if (e.reason === "covered") {
+            sfx.covered();
             Haptics.notificationAsync(
               outcome === "coveredThem"
                 ? Haptics.NotificationFeedbackType.Success
@@ -247,12 +251,15 @@ export function useOnlineBattle(
         for (const p of landed) {
           if (p.direction === "incoming") {
             v.screenSplats = [...v.screenSplats, makeScreenSplat(p.to, layout.width)];
+            v.lastHitAt = now;
+            sfx.splat();
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
           } else {
             v.opponentSplats = [
               ...v.opponentSplats,
               makeOpponentSplat(p.to, layout.opponentRadius),
             ];
+            sfx.splat();
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
           }
         }
@@ -298,6 +305,7 @@ export function useOnlineBattle(
           durationMs: OUTGOING_FLIGHT_MS,
         },
       ];
+      sfx.throw();
       Haptics.selectionAsync().catch(() => {});
     },
     [],

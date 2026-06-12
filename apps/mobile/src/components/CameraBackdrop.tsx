@@ -1,0 +1,39 @@
+import React, { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+
+/**
+ * Cosmetic camera background (explicitly allowed by the MVP scope:
+ * "Camera can be an optional cosmetic background only"). The feed is
+ * displayed, never recorded or uploaded. A dark scrim keeps splats and
+ * HUD readable on top of the real world.
+ */
+export function CameraBackdrop({ enabled }: { enabled: boolean }) {
+  const [permission, requestPermission] = useCameraPermissions();
+
+  useEffect(() => {
+    if (enabled && permission && !permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [enabled, permission, requestPermission]);
+
+  if (!enabled || !permission?.granted) return null;
+  return (
+    <>
+      <CameraView style={StyleSheet.absoluteFill} facing="back" />
+      <View style={styles.scrim} pointerEvents="none" />
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  scrim: {
+    ...StyleSheet.absoluteFill as object,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(26, 13, 10, 0.35)",
+  },
+});

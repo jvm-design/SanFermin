@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,13 +8,17 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { COVER_THRESHOLD, SPLAT_PER_HIT } from "@tomatina/shared";
 import { RoundOutcome } from "../game/types";
 import { BattleTarget, useOnlineBattle } from "../game/useOnlineBattle";
 import { ThrowRelease, useThrowGesture } from "../game/useThrowGesture";
 import { BattleCanvas } from "../components/BattleCanvas";
+import { CameraBackdrop } from "../components/CameraBackdrop";
 import { SplatMeter } from "../components/SplatMeter";
 import { BUILD_TAG } from "../buildTag";
 import { colors } from "../theme";
+
+const MATCH_POINT = COVER_THRESHOLD - SPLAT_PER_HIT;
 
 interface Props {
   target: BattleTarget;
@@ -41,6 +45,11 @@ export function OnlineBattleScreen({ target, signedIn, onRoundEnd, onLeave }: Pr
     [throwTomato],
   );
   const { panHandlers, dragRef } = useThrowGesture(restPos, handleThrow);
+  const [cameraOn, setCameraOn] = useState(false);
+  const matchPoint =
+    battle.status === "active" &&
+    (battle.view.playerSplat >= MATCH_POINT ||
+      battle.view.opponentSplat >= MATCH_POINT);
 
   const leaveBattle = () => {
     battle.leave();
@@ -87,6 +96,7 @@ export function OnlineBattleScreen({ target, signedIn, onRoundEnd, onLeave }: Pr
 
   return (
     <View style={styles.container}>
+      <CameraBackdrop enabled={cameraOn} />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BattleCanvas
           view={battle.view}
@@ -112,6 +122,20 @@ export function OnlineBattleScreen({ target, signedIn, onRoundEnd, onLeave }: Pr
         <Pressable style={styles.safety} onPress={confirmBlock} hitSlop={12}>
           <Text style={styles.safetyText}>⚠️</Text>
         </Pressable>
+      )}
+
+      <Pressable
+        style={styles.cameraToggle}
+        onPress={() => setCameraOn((v) => !v)}
+        hitSlop={12}
+      >
+        <Text style={styles.cameraToggleText}>{cameraOn ? "🎥" : "📷"}</Text>
+      </Pressable>
+
+      {matchPoint && (
+        <Text style={styles.matchPoint} pointerEvents="none">
+          MATCH POINT 🍅
+        </Text>
       )}
 
       {(battle.status === "connecting" || battle.status === "waiting") && (
@@ -175,6 +199,26 @@ const styles = StyleSheet.create({
   leaveText: { color: colors.textDim, fontSize: 14, fontWeight: "600" },
   safety: { position: "absolute", top: 18, right: 16, paddingVertical: 6, paddingHorizontal: 10 },
   safetyText: { fontSize: 18 },
+  cameraToggle: {
+    position: "absolute",
+    top: 18,
+    right: 60,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  cameraToggleText: { fontSize: 18 },
+  matchPoint: {
+    position: "absolute",
+    top: 110,
+    alignSelf: "center",
+    color: colors.tomato,
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 2,
+    textShadowColor: "#000",
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 1 },
+  },
   waitOverlay: {
     position: "absolute",
     top: 0,

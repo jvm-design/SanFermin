@@ -36,7 +36,14 @@ export function makeScreenSplat(center: Vec2, screenWidth: number): Splat {
     length: base * rand(0.8, 1.8),
     width: base * rand(0.12, 0.22),
   }));
-  return { id: nextId++, center, blobs, drips, color: pick(SPLAT_COLORS) };
+  return {
+    id: nextId++,
+    center,
+    blobs,
+    drips,
+    color: pick(SPLAT_COLORS),
+    createdAt: Date.now(),
+  };
 }
 
 /** A small splat that sticks to the opponent avatar when you land a hit. */
@@ -53,5 +60,12 @@ export function makeOpponentSplat(center: Vec2, avatarRadius: number): Splat {
       r: base * rand(0.2, 0.4),
     });
   }
-  return { id: nextId++, center, blobs, drips: [], color: pick(SPLAT_COLORS) };
+  return {
+    id: nextId++,
+    center,
+    blobs,
+    drips: [],
+    color: pick(SPLAT_COLORS),
+    createdAt: Date.now(),
+  };
 }
