@@ -14,8 +14,10 @@ IN scope:
 - Trust and safety baseline.
 - Metric instrumentation for the two kill gates.
 
+IN scope by founder decision 2026-06-12 (see docs/decisions/0007):
+- True AR battle rendering (ViroReact / ARKit / ARCore) as a core experience. The 2D canvas with camera backdrop remains as the Expo Go fallback.
+
 OUT of scope for MVP (explicitly deferred, do not build):
-- Camera AR rendering. Use a stylized 2D canvas. Camera can be an optional cosmetic background only.
 - N player melee (more than 2 per room).
 - Multiple cities or zones at once.
 - Monetization, cosmetics, special tomatoes.

@@ -130,12 +130,18 @@ interface Props {
   nowMs: number;
   /** The grabbable tomato (rests at the bottom, follows the finger). */
   held?: HeldTomatoView;
+  /**
+   * "overlay": only screen-space elements (your splats, held tomato,
+   * vision film, shake) — used when the 3D AR scene renders the opponent
+   * and the flying tomatoes itself.
+   */
+  mode?: "full" | "overlay";
 }
 
 const SHAKE_MS = 280;
 const SHAKE_MAG = 13;
 
-export function BattleCanvas({ view, layout, nowMs, held }: Props) {
+export function BattleCanvas({ view, layout, nowMs, held, mode = "full" }: Props) {
   const coverage = view.playerSplat / COVER_THRESHOLD;
   // vision-obscured film ramps in over the last third of the meter
   const filmOpacity = Math.max(0, (coverage - 0.65) / 0.35) * 0.55;
@@ -149,21 +155,23 @@ export function BattleCanvas({ view, layout, nowMs, held }: Props) {
   return (
     <Canvas style={StyleSheet.absoluteFill}>
       <Group transform={[{ translateX: shakeX }, { translateY: shakeY }]}>
-        <Opponent
-          splats={view.opponentSplats}
-          center={layout.opponentCenter}
-          radius={layout.opponentRadius}
-          nowMs={nowMs}
-        />
+        {mode === "full" && (
+          <Opponent
+            splats={view.opponentSplats}
+            center={layout.opponentCenter}
+            radius={layout.opponentRadius}
+            nowMs={nowMs}
+          />
+        )}
 
-        {view.projectiles.map((p) => {
-          const { pos, t } = projectilePosition(p, nowMs);
-          // outgoing tomatoes shrink into the distance, incoming ones grow at you
-          const r = p.direction === "outgoing" ? 22 - 14 * t : 10 + 52 * t;
-          const spin =
-            (p.direction === "outgoing" ? 7 : 4.5) * t + (p.id % 7);
-          return <Tomato key={p.id} x={pos.x} y={pos.y} r={r} spin={spin} />;
-        })}
+        {mode === "full" &&
+          view.projectiles.map((p) => {
+            const { pos, t } = projectilePosition(p, nowMs);
+            // outgoing tomatoes shrink into the distance, incoming ones grow at you
+            const r = p.direction === "outgoing" ? 22 - 14 * t : 10 + 52 * t;
+            const spin = (p.direction === "outgoing" ? 7 : 4.5) * t + (p.id % 7);
+            return <Tomato key={p.id} x={pos.x} y={pos.y} r={r} spin={spin} />;
+          })}
 
         {/* splats covering YOUR view — this is the splat meter made visible */}
         {view.screenSplats.map((s) => (

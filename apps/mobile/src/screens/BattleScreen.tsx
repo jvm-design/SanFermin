@@ -7,6 +7,8 @@ import { ThrowRelease, useThrowGesture } from "../game/useThrowGesture";
 import { BattleCanvas } from "../components/BattleCanvas";
 import { CameraBackdrop } from "../components/CameraBackdrop";
 import { SplatMeter } from "../components/SplatMeter";
+import { ARBattleView } from "../ar/ARBattleView";
+import { arAvailable } from "../ar/viro";
 import { BUILD_TAG } from "../buildTag";
 import { colors } from "../theme";
 
@@ -39,15 +41,26 @@ export function BattleScreen({ onRoundEnd, onLeave }: Props) {
     (battle.view.playerSplat >= MATCH_POINT ||
       battle.view.opponentSplat >= MATCH_POINT);
 
+  const trueAR = cameraOn && arAvailable;
+
   return (
     <View style={styles.container}>
-      <CameraBackdrop enabled={cameraOn} />
+      {/* true AR in dev/prod builds; camera backdrop in Expo Go */}
+      {trueAR ? (
+        <ARBattleView
+          getView={() => ({ view: battle.view, nowMs: battle.nowMs })}
+          layoutWidth={battle.layout.width}
+        />
+      ) : (
+        <CameraBackdrop enabled={cameraOn} />
+      )}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BattleCanvas
           view={battle.view}
           layout={battle.layout}
           nowMs={battle.nowMs}
           held={dragRef.current}
+          mode={trueAR ? "overlay" : "full"}
         />
       </View>
 
