@@ -81,6 +81,7 @@ export default function App() {
       {screen.name === "online" && (
         <OnlineBattleScreen
           code={screen.code}
+          signedIn={signedIn === true}
           onRoundEnd={(outcome) =>
             setScreen({
               name: "covered",

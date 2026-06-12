@@ -3,15 +3,20 @@ import * as Haptics from "expo-haptics";
 import { Client, Room } from "colyseus.js";
 import { COUNTDOWN_MS, THROW_COOLDOWN_MS } from "@tomatina/shared";
 import {
+  BattleJoinOptions,
   BattleStateView,
+  MSG_BLOCK,
+  MSG_REPORT,
   MSG_ROUND_END,
   MSG_THROW,
   MSG_THROWN,
+  ReportEvent,
   RoundEndEvent,
   ThrowEvent,
   ThrownEvent,
 } from "@tomatina/protocol";
 import { GAME_SERVER_URL } from "../config";
+import { supabase } from "../lib/supabase";
 import { makeOpponentSplat, makeScreenSplat } from "./splats";
 import { BattleLayout, BattleViewState, RoundOutcome } from "./types";
 
@@ -45,6 +50,12 @@ export interface UseOnlineBattleResult {
   countdownEndsAt: number;
   /** Send a throw intent. aim is the normalized splat point, cosmetic only. */
   throwTomato: (aimX: number, aimY: number, opts?: OnlineThrowOptions) => void;
+  /**
+   * Block the opponent (optionally with a report). Server resolves the
+   * target and excludes the pair from future matchmaking. Caller should
+   * leave the battle afterwards.
+   */
+  blockOpponent: (alsoReport: boolean) => void;
   /** Leave the battle (always escapable). */
   leave: () => void;
 }
@@ -93,8 +104,16 @@ export function useOnlineBattle(
 
     const connect = async () => {
       try {
+        // Identify ourselves when signed in; the server verifies the token
+        // and keeps the user id server-side (blocks, reports, events).
+        let accessToken: string | undefined;
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          accessToken = data.session?.access_token;
+        }
+        const options: BattleJoinOptions = { code, accessToken };
         const client = new Client(GAME_SERVER_URL);
-        room = await client.joinOrCreate<BattleStateView>("battle", { code });
+        room = await client.joinOrCreate<BattleStateView>("battle", options);
         if (disposed) {
           room.leave();
           return;
@@ -265,6 +284,16 @@ export function useOnlineBattle(
     [],
   );
 
+  const blockOpponent = useCallback((alsoReport: boolean) => {
+    const room = roomRef.current;
+    if (!room) return;
+    room.send(MSG_BLOCK);
+    if (alsoReport) {
+      const report: ReportEvent = { reason: "inappropriate" };
+      room.send(MSG_REPORT, report);
+    }
+  }, []);
+
   const leave = useCallback(() => {
     statusRef.current = "ended";
     roomRef.current?.leave();
@@ -278,6 +307,7 @@ export function useOnlineBattle(
     nowMs: nowRef.current,
     countdownEndsAt: countdownEndsAtRef.current,
     throwTomato,
+    blockOpponent,
     leave,
   };
 }

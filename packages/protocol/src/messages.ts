@@ -19,6 +19,36 @@ export interface ThrowEvent {
   aimY: number;
 }
 
+/**
+ * Block the current opponent. No payload: the server resolves who the
+ * opponent is — the client never supplies a target user id (invariant 6).
+ * Effect: the pair is never matched again (invariant 3).
+ */
+export const MSG_BLOCK = "block" as const;
+
+export const REPORT_REASONS = [
+  "harassment",
+  "inappropriate",
+  "spam",
+  "other",
+] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+/** Report the current opponent. Server resolves the target. */
+export const MSG_REPORT = "report" as const;
+
+export interface ReportEvent {
+  reason: ReportReason;
+}
+
+/** Options passed to joinOrCreate("battle", ...). */
+export interface BattleJoinOptions {
+  /** Manual room code (Phase 1). */
+  code: string;
+  /** Supabase access token; identifies the player server-side only. */
+  accessToken?: string;
+}
+
 // ---- server -> clients ----
 
 /** Broadcast to both players so each client can animate the tomato. */

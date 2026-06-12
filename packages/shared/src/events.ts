@@ -34,6 +34,8 @@ export interface GameEvent {
   roomId?: string;
   /** Anonymous session ids involved — never identity, never location. */
   sessionIds?: string[];
+  /** Authenticated (still anonymous) user ids, when known. */
+  userIds?: string[];
   /** Event-specific extras (duration, reason, zone hash...). */
   props?: Record<string, string | number | boolean>;
 }

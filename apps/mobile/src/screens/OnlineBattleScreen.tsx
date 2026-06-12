@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -17,12 +18,14 @@ import { colors } from "../theme";
 
 interface Props {
   code: string;
+  /** Blocking requires an account; the safety button hides otherwise. */
+  signedIn: boolean;
   onRoundEnd: (outcome: RoundOutcome) => void;
   /** Battles are always escapable (invariant 3). */
   onLeave: () => void;
 }
 
-export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
+export function OnlineBattleScreen({ code, signedIn, onRoundEnd, onLeave }: Props) {
   const { width, height } = useWindowDimensions();
   const battle = useOnlineBattle(code, width, height, onRoundEnd);
 
@@ -42,6 +45,32 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
   const leaveBattle = () => {
     battle.leave();
     onLeave();
+  };
+
+  const confirmBlock = () => {
+    Alert.alert(
+      "Block this player?",
+      "They will never be matched with you again. The round ends for you now.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: () => {
+            battle.blockOpponent(false);
+            leaveBattle();
+          },
+        },
+        {
+          text: "Block + report",
+          style: "destructive",
+          onPress: () => {
+            battle.blockOpponent(true);
+            leaveBattle();
+          },
+        },
+      ],
+    );
   };
 
   if (battle.status === "error") {
@@ -78,6 +107,12 @@ export function OnlineBattleScreen({ code, onRoundEnd, onLeave }: Props) {
       <Pressable style={styles.leave} onPress={leaveBattle} hitSlop={12}>
         <Text style={styles.leaveText}>✕ Leave</Text>
       </Pressable>
+
+      {signedIn && battle.status === "active" && (
+        <Pressable style={styles.safety} onPress={confirmBlock} hitSlop={12}>
+          <Text style={styles.safetyText}>⚠️</Text>
+        </Pressable>
+      )}
 
       {(battle.status === "connecting" || battle.status === "waiting") && (
         <View style={styles.waitOverlay} pointerEvents="none">
@@ -136,6 +171,8 @@ const styles = StyleSheet.create({
   hud: { position: "absolute", top: 58, left: 0, right: 0 },
   leave: { position: "absolute", top: 18, left: 16, paddingVertical: 6, paddingHorizontal: 10 },
   leaveText: { color: colors.textDim, fontSize: 14, fontWeight: "600" },
+  safety: { position: "absolute", top: 18, right: 16, paddingVertical: 6, paddingHorizontal: 10 },
+  safetyText: { fontSize: 18 },
   waitOverlay: {
     position: "absolute",
     top: 0,
