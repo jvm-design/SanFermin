@@ -8,9 +8,13 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#1a0d0a",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Tomatina uses your location to find players within tomato-throwing range. Your exact position is only used on the server and is never shown to other players."
+      }
     },
     "android": {
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

@@ -7,8 +7,13 @@ import { Client, Room } from "colyseus.js";
 import { COVER_THRESHOLD, SPLAT_PER_HIT, THROW_COOLDOWN_MS } from "@tomatina/shared";
 import {
   BattleStateView,
+  MatchedInfo,
+  MSG_MATCHED,
+  MSG_NEARBY,
+  MSG_POSITION,
   MSG_ROUND_END,
   MSG_THROW,
+  PositionUpdate,
   RoundEndEvent,
   ThrowEvent,
 } from "@tomatina/protocol";
@@ -114,12 +119,65 @@ async function testDisconnectEndsCleanly() {
   await b.leave();
 }
 
+async function testPlazaProximityMatching() {
+  const clientA = new Client(URL);
+  const clientB = new Client(URL);
+  const clientFar = new Client(URL);
+  const plazaA = await clientA.joinOrCreate("plaza", {});
+  const plazaB = await clientB.joinOrCreate("plaza", {});
+  const plazaFar = await clientFar.joinOrCreate("plaza", {});
+
+  let resA: unknown;
+  let resB: unknown;
+  let farMatched = false;
+  plazaA.onMessage(MSG_MATCHED, (m: MatchedInfo) => (resA = m.reservation));
+  plazaB.onMessage(MSG_MATCHED, (m: MatchedInfo) => (resB = m.reservation));
+  plazaFar.onMessage(MSG_MATCHED, () => (farMatched = true));
+  plazaA.onMessage(MSG_NEARBY, () => {});
+  plazaB.onMessage(MSG_NEARBY, () => {});
+  plazaFar.onMessage(MSG_NEARBY, () => {});
+
+  // A and B are ~10 m apart; Far is ~890 m away.
+  const posA: PositionUpdate = { lat: 43.262, lng: -2.935, accuracyM: 5 };
+  const posB: PositionUpdate = { lat: 43.26209, lng: -2.935, accuracyM: 5 };
+  const posFar: PositionUpdate = { lat: 43.27, lng: -2.935, accuracyM: 5 };
+  plazaA.send(MSG_POSITION, posA);
+  plazaB.send(MSG_POSITION, posB);
+  plazaFar.send(MSG_POSITION, posFar);
+
+  await waitFor(() => !!resA && !!resB, "plaza proximity match", 10_000);
+  assert(!farMatched, "the faraway player must not be matched");
+
+  // Consume the reservations and play the round for real.
+  const battleA = (await clientA.consumeSeatReservation(
+    resA as never,
+  )) as unknown as BattleRoom;
+  const battleB = (await clientB.consumeSeatReservation(
+    resB as never,
+  )) as unknown as BattleRoom;
+  await waitFor(
+    () => battleA.state.phase === "countdown" || battleA.state.phase === "active",
+    "matched battle countdown",
+  );
+  await waitFor(() => battleA.state.phase === "active", "matched battle active", 8000);
+  assert(battleA.roomId === battleB.roomId, "both players in the same battle room");
+
+  console.log("ok: plaza — 10 m pair matched into a battle, 890 m player left out");
+
+  await battleA.leave();
+  await battleB.leave();
+  await plazaFar.leave();
+  await plazaA.leave();
+  await plazaB.leave();
+}
+
 async function main() {
   const server = createGameServer();
   await server.listen(PORT);
 
   await testCoveredRound();
   await testDisconnectEndsCleanly();
+  await testPlazaProximityMatching();
 
   console.log("smoke test passed");
   process.exit(0);

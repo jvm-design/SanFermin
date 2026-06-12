@@ -6,6 +6,8 @@ import { HomeScreen } from "./src/screens/HomeScreen";
 import { BattleScreen } from "./src/screens/BattleScreen";
 import { JoinScreen } from "./src/screens/JoinScreen";
 import { OnlineBattleScreen } from "./src/screens/OnlineBattleScreen";
+import { PlazaScreen } from "./src/screens/PlazaScreen";
+import { BattleTarget } from "./src/game/useOnlineBattle";
 import { CoveredScreen } from "./src/screens/CoveredScreen";
 import { RevealConsentScreen } from "./src/screens/RevealConsentScreen";
 import { FriendlyPassScreen } from "./src/screens/FriendlyPassScreen";
@@ -13,14 +15,18 @@ import { ChatScreen } from "./src/screens/ChatScreen";
 import { RoundOutcome } from "./src/game/types";
 
 /** Where the round was played, so rematch can return to the same mode. */
-type Origin = { mode: "practice" } | { mode: "online"; code: string };
+type Origin =
+  | { mode: "practice" }
+  | { mode: "online"; code: string }
+  | { mode: "plaza" };
 
 type Screen =
   | { name: "home" }
   | { name: "auth" }
   | { name: "practice" }
   | { name: "join" }
-  | { name: "online"; code: string }
+  | { name: "plaza" }
+  | { name: "online"; target: BattleTarget }
   | { name: "covered"; outcome: RoundOutcome; origin: Origin }
   | { name: "reveal"; won: boolean; origin: Origin }
   | { name: "pass" }
@@ -44,7 +50,9 @@ export default function App() {
     setScreen(
       origin.mode === "practice"
         ? { name: "practice" }
-        : { name: "online", code: origin.code },
+        : origin.mode === "plaza"
+          ? { name: "plaza" }
+          : { name: "online", target: { kind: "code", code: origin.code } },
     );
 
   return (
@@ -52,10 +60,21 @@ export default function App() {
       <StatusBar style="light" />
       {screen.name === "home" && (
         <HomeScreen
+          onFindNearby={() =>
+            setScreen(signedIn === true ? { name: "plaza" } : { name: "auth" })
+          }
           onBattleOnline={() => setScreen({ name: "join" })}
           onPractice={() => setScreen({ name: "practice" })}
           signedIn={signedIn}
           onSignIn={() => setScreen({ name: "auth" })}
+        />
+      )}
+      {screen.name === "plaza" && (
+        <PlazaScreen
+          onMatched={(reservation) =>
+            setScreen({ name: "online", target: { kind: "reservation", reservation } })
+          }
+          onLeave={() => setScreen({ name: "home" })}
         />
       )}
       {screen.name === "auth" && (
@@ -74,19 +93,24 @@ export default function App() {
       )}
       {screen.name === "join" && (
         <JoinScreen
-          onJoin={(code) => setScreen({ name: "online", code })}
+          onJoin={(code) =>
+            setScreen({ name: "online", target: { kind: "code", code } })
+          }
           onBack={() => setScreen({ name: "home" })}
         />
       )}
       {screen.name === "online" && (
         <OnlineBattleScreen
-          code={screen.code}
+          target={screen.target}
           signedIn={signedIn === true}
           onRoundEnd={(outcome) =>
             setScreen({
               name: "covered",
               outcome,
-              origin: { mode: "online", code: screen.code },
+              origin:
+                screen.target.kind === "code"
+                  ? { mode: "online", code: screen.target.code }
+                  : { mode: "plaza" },
             })
           }
           onLeave={() => setScreen({ name: "home" })}

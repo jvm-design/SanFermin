@@ -33,6 +33,11 @@ export type OnlineStatus =
   | "ended"
   | "error";
 
+/** How to enter the battle: a manual room code, or a plaza match. */
+export type BattleTarget =
+  | { kind: "code"; code: string }
+  | { kind: "reservation"; reservation: unknown };
+
 export interface OnlineThrowOptions {
   /** Launch point (where the flick released). Defaults to the rest spot. */
   from?: { x: number; y: number };
@@ -66,7 +71,7 @@ export interface UseOnlineBattleResult {
  * cosmetic, driven by the server's "thrown" broadcast.
  */
 export function useOnlineBattle(
-  code: string,
+  target: BattleTarget,
   width: number,
   height: number,
   onRoundEnd: (outcome: RoundOutcome) => void,
@@ -104,16 +109,23 @@ export function useOnlineBattle(
 
     const connect = async () => {
       try {
-        // Identify ourselves when signed in; the server verifies the token
-        // and keeps the user id server-side (blocks, reports, events).
-        let accessToken: string | undefined;
-        if (supabase) {
-          const { data } = await supabase.auth.getSession();
-          accessToken = data.session?.access_token;
-        }
-        const options: BattleJoinOptions = { code, accessToken };
         const client = new Client(GAME_SERVER_URL);
-        room = await client.joinOrCreate<BattleStateView>("battle", options);
+        if (target.kind === "reservation") {
+          // Plaza match: the reservation already carries our identity.
+          room = (await client.consumeSeatReservation(
+            target.reservation as never,
+          )) as Room<BattleStateView>;
+        } else {
+          // Identify ourselves when signed in; the server verifies the
+          // token and keeps the user id server-side (blocks, reports).
+          let accessToken: string | undefined;
+          if (supabase) {
+            const { data } = await supabase.auth.getSession();
+            accessToken = data.session?.access_token;
+          }
+          const options: BattleJoinOptions = { code: target.code, accessToken };
+          room = await client.joinOrCreate<BattleStateView>("battle", options);
+        }
         if (disposed) {
           room.leave();
           return;
@@ -211,7 +223,7 @@ export function useOnlineBattle(
       roomRef.current?.leave();
       roomRef.current = null;
     };
-  }, [code]);
+  }, [target]);
 
   // Frame loop: advance the clock, land cosmetic projectiles, repaint.
   // setInterval rather than requestAnimationFrame: it keeps ticking in

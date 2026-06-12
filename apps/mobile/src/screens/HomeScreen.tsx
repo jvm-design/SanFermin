@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../theme";
 
 interface Props {
+  onFindNearby: () => void;
   onBattleOnline: () => void;
   onPractice: () => void;
   /** null = Supabase not configured; auth UI hidden. */
@@ -10,7 +11,13 @@ interface Props {
   onSignIn: () => void;
 }
 
-export function HomeScreen({ onBattleOnline, onPractice, signedIn, onSignIn }: Props) {
+export function HomeScreen({
+  onFindNearby,
+  onBattleOnline,
+  onPractice,
+  signedIn,
+  onSignIn,
+}: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.emoji}>🍅</Text>
@@ -19,8 +26,11 @@ export function HomeScreen({ onBattleOnline, onPractice, signedIn, onSignIn }: P
         Meet someone nearby by covering them in tomato first, swapping names
         after — if you both want to.
       </Text>
-      <Pressable style={styles.button} onPress={onBattleOnline}>
-        <Text style={styles.buttonText}>Battle online</Text>
+      <Pressable style={styles.button} onPress={onFindNearby}>
+        <Text style={styles.buttonText}>Find someone nearby</Text>
+      </Pressable>
+      <Pressable style={styles.secondary} onPress={onBattleOnline}>
+        <Text style={styles.secondaryText}>Battle online (room code)</Text>
       </Pressable>
       <Pressable style={styles.secondary} onPress={onPractice}>
         <Text style={styles.secondaryText}>Practice vs bot</Text>

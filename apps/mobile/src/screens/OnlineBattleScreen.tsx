@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { RoundOutcome } from "../game/types";
-import { useOnlineBattle } from "../game/useOnlineBattle";
+import { BattleTarget, useOnlineBattle } from "../game/useOnlineBattle";
 import { ThrowRelease, useThrowGesture } from "../game/useThrowGesture";
 import { BattleCanvas } from "../components/BattleCanvas";
 import { SplatMeter } from "../components/SplatMeter";
@@ -17,7 +17,7 @@ import { BUILD_TAG } from "../buildTag";
 import { colors } from "../theme";
 
 interface Props {
-  code: string;
+  target: BattleTarget;
   /** Blocking requires an account; the safety button hides otherwise. */
   signedIn: boolean;
   onRoundEnd: (outcome: RoundOutcome) => void;
@@ -25,9 +25,9 @@ interface Props {
   onLeave: () => void;
 }
 
-export function OnlineBattleScreen({ code, signedIn, onRoundEnd, onLeave }: Props) {
+export function OnlineBattleScreen({ target, signedIn, onRoundEnd, onLeave }: Props) {
   const { width, height } = useWindowDimensions();
-  const battle = useOnlineBattle(code, width, height, onRoundEnd);
+  const battle = useOnlineBattle(target, width, height, onRoundEnd);
 
   const restPos = useMemo(() => ({ x: width / 2, y: height - 90 }), [width, height]);
   const { throwTomato } = battle;
@@ -120,7 +120,9 @@ export function OnlineBattleScreen({ code, signedIn, onRoundEnd, onLeave }: Prop
           <Text style={styles.waitTitle}>
             {battle.status === "connecting" ? "Connecting…" : "Waiting for an opponent…"}
           </Text>
-          <Text style={styles.waitCode}>room code: {code}</Text>
+          {target.kind === "code" && (
+            <Text style={styles.waitCode}>room code: {target.code}</Text>
+          )}
         </View>
       )}
 

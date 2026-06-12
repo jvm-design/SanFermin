@@ -53,8 +53,16 @@ export class BattleRoom extends Room<BattleRoomState> {
   private lastThrowAt = new Map<string, number>();
   /** sessionId -> Supabase user id. Server-side only, never synced. */
   private userIds = new Map<string, string | null>();
+  /** Analytics meta (plaza match distance/zone). */
+  private meta: Record<string, string | number> = {};
 
-  onCreate() {
+  onCreate(options?: unknown) {
+    const opts = (options ?? {}) as Record<string, unknown>;
+    if (opts.source === "plaza") {
+      this.meta.source = "plaza";
+      if (typeof opts.distanceM === "number") this.meta.distanceM = opts.distanceM;
+      if (typeof opts.zone === "string") this.meta.zone = opts.zone;
+    }
     this.setPatchRate(1000 / TICK_HZ);
 
     this.onMessage(MSG_THROW, (client, raw: unknown) => {
@@ -123,6 +131,7 @@ export class BattleRoom extends Room<BattleRoomState> {
         roomId: this.roomId,
         sessionIds: [...this.state.players.keys()],
         userIds: this.knownUserIds(),
+        props: this.meta,
       });
       // 3-2-1-GO: both clients unlock at the same server-driven moment.
       this.state.phase = "countdown";
