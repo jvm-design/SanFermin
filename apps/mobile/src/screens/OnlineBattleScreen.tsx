@@ -45,7 +45,8 @@ export function OnlineBattleScreen({ target, signedIn, onRoundEnd, onLeave }: Pr
     [throwTomato],
   );
   const { panHandlers, dragRef } = useThrowGesture(restPos, handleThrow);
-  const [cameraOn, setCameraOn] = useState(false);
+  // The camera IS the experience: battles open over the real world.
+  const [cameraOn, setCameraOn] = useState(true);
   const matchPoint =
     battle.status === "active" &&
     (battle.view.playerSplat >= MATCH_POINT ||
@@ -129,7 +130,9 @@ export function OnlineBattleScreen({ target, signedIn, onRoundEnd, onLeave }: Pr
         onPress={() => setCameraOn((v) => !v)}
         hitSlop={12}
       >
-        <Text style={styles.cameraToggleText}>{cameraOn ? "🎥" : "📷"}</Text>
+        <Text style={styles.cameraToggleText}>
+          {cameraOn ? "🎥 AR on" : "📷 AR off"}
+        </Text>
       </Pressable>
 
       {matchPoint && (
@@ -204,9 +207,13 @@ const styles = StyleSheet.create({
     top: 18,
     right: 60,
     paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.textDim,
+    backgroundColor: "rgba(26, 13, 10, 0.55)",
   },
-  cameraToggleText: { fontSize: 18 },
+  cameraToggleText: { fontSize: 13, color: colors.text, fontWeight: "700" },
   matchPoint: {
     position: "absolute",
     top: 110,

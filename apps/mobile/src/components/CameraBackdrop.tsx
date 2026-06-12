@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Alert, Linking, StyleSheet, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 /**
@@ -10,10 +10,22 @@ import { CameraView, useCameraPermissions } from "expo-camera";
  */
 export function CameraBackdrop({ enabled }: { enabled: boolean }) {
   const [permission, requestPermission] = useCameraPermissions();
+  const warnedRef = useRef(false);
 
   useEffect(() => {
-    if (enabled && permission && !permission.granted && permission.canAskAgain) {
+    if (!enabled || !permission || permission.granted) return;
+    if (permission.canAskAgain) {
       requestPermission();
+    } else if (!warnedRef.current) {
+      warnedRef.current = true;
+      Alert.alert(
+        "Camera is blocked",
+        "To battle over the real world, allow camera access for Expo Go in your phone Settings.",
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+        ],
+      );
     }
   }, [enabled, permission, requestPermission]);
 
@@ -28,7 +40,6 @@ export function CameraBackdrop({ enabled }: { enabled: boolean }) {
 
 const styles = StyleSheet.create({
   scrim: {
-    ...StyleSheet.absoluteFill as object,
     position: "absolute",
     top: 0,
     left: 0,
