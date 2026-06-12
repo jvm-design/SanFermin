@@ -48,7 +48,7 @@ GAME_SERVER_URL=wss://<your-domain>.up.railway.app pnpm --filter @tomatina/game-
 |---|---|
 | `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | accounts, blocks/reports, kill-gate events |
 | `STREAM_API_KEY` + `STREAM_API_SECRET` | hosted chat after mutual reveal (getstream.io → create app → copy key & secret). Without them, reveal works and the chat falls back to local-only |
-| `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` + `AWS_REGION` | image moderation for chat media (see docs/MODERATION.md). Without them, the 📷 button stays hidden and uploads are refused |
+| `SIGHTENGINE_API_USER` + `SIGHTENGINE_API_SECRET` (or the AWS trio, see docs/MODERATION.md) | image moderation for chat media. Without a provider, the 📷 button stays hidden and uploads are refused |
 
 ## Notes
 
