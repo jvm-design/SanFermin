@@ -12,7 +12,11 @@
  * (name+ext based), which bypasses variant matching entirely — the
  * standard workaround for local AARs on modern Gradle.
  *
- * Must be listed in app.json plugins AFTER "@reactvision/react-viro".
+ * IMPORTANT ordering: this plugin must be listed in app.json plugins
+ * BEFORE "@reactvision/react-viro". Expo composes same-type mods so the
+ * first-listed plugin's mod runs LAST — so listing us first makes our
+ * app/build.gradle edits run AFTER Viro has injected its project deps,
+ * letting us strip them. (Verified via `expo prebuild` locally.)
  */
 const { withProjectBuildGradle, withAppBuildGradle } = require("@expo/config-plugins");
 
@@ -29,18 +33,17 @@ const FLATDIR_BLOCK = `
             )
         }`;
 
-const AAR_DEPS = `
-    // viro-flatdir-deps
+const AAR_DEPS = `    // viro-flatdir-deps
     implementation(name: 'viro_renderer-release', ext: 'aar')
     implementation(name: 'react_viro-release', ext: 'aar')
     implementation(name: 'core-1.43.0', ext: 'aar')
     implementation(name: 'sdk-common-1.180.0', ext: 'aar')`;
 
+/** Add the flatDir repository into allprojects { repositories { ... } }. */
 function withFlatDirRepo(config) {
   return withProjectBuildGradle(config, (c) => {
     if (c.modResults.language !== "groovy") return c;
     if (c.modResults.contents.includes("// viro-flatdir")) return c;
-    // Inject flatDir into allprojects { repositories { ... } }.
     c.modResults.contents = c.modResults.contents.replace(
       /allprojects\s*\{\s*repositories\s*\{/,
       (m) => `${m}\n${FLATDIR_BLOCK}`,
@@ -49,18 +52,20 @@ function withFlatDirRepo(config) {
   });
 }
 
+/**
+ * After everything else has written app/build.gradle, rewrite it on disk:
+ * swap Viro's variant-less `project(:...)` deps for flatDir AAR deps.
+ */
 function withAarDeps(config) {
   return withAppBuildGradle(config, (c) => {
     if (c.modResults.language !== "groovy") return c;
     let contents = c.modResults.contents;
-    // Drop Viro's project(...) references — those are the unresolvable
-    // variant-less projects.
+    // Remove Viro's four project(...) references (robust to spacing).
     contents = contents
-      .replace(/^\s*implementation project\(':gvr_common'\)\s*$/m, "")
-      .replace(/^\s*implementation project\(':arcore_client'\)\s*$/m, "")
-      .replace(/^\s*implementation project\(path: ':react_viro'\)\s*$/m, "")
-      .replace(/^\s*implementation project\(path: ':viro_renderer'\)\s*$/m, "");
-    // Add the flatDir name-based AAR deps once, inside dependencies { }.
+      .replace(/^[ \t]*implementation project\(['"]:gvr_common['"]\).*\n?/m, "")
+      .replace(/^[ \t]*implementation project\(['"]:arcore_client['"]\).*\n?/m, "")
+      .replace(/^[ \t]*implementation project\(path: ['"]:react_viro['"]\).*\n?/m, "")
+      .replace(/^[ \t]*implementation project\(path: ['"]:viro_renderer['"]\).*\n?/m, "");
     if (!contents.includes("// viro-flatdir-deps")) {
       contents = contents.replace(/dependencies\s*\{/, (m) => `${m}\n${AAR_DEPS}`);
     }
