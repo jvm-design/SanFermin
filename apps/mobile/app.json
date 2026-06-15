@@ -30,7 +30,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["@reactvision/react-viro"],
+    "plugins": ["@reactvision/react-viro", "./plugins/withViroFlatDir.js"],
     "owner": "jvm44",
     "extra": {
       "eas": {
