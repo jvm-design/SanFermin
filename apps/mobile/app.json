@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#1a0d0a",
+    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.tomatina.app",
       "supportsTablet": false,
