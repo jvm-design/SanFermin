@@ -84,3 +84,16 @@ Both must be queryable from raw events. Do not ship Phase 2 without them.
 - zone: a geohash cell used for coarse proximity. Never exposed as coordinates.
 - focus_signal: how much two players threw at each other, used to suggest a match.
 - tomato hour: a scheduled window that concentrates demand when density is low.
+
+## Mémoire projet (Obsidian)
+
+Ce projet a une mémoire persistante :
+`~/Documents/Obsidian Vault/1-Projects/sanfermin/`
+
+### En début de session (obligatoire)
+1. Lis `status.md` — état courant, prochaines étapes, contexte
+2. Ne lis jamais rien dans `4-Archives/`
+
+### En fin de session (obligatoire)
+1. Mets à jour `status.md` : état courant, prochaines étapes, date `maj`
+2. Les décisions techniques restent dans `/docs/decisions` (convention existante de ce repo) — pas de doublon dans le vault
